@@ -90,14 +90,6 @@ impl Events {
                         return;
                     }
                 }
-                //for evt in stdin.keys() {
-                //    if let Ok(key) = evt {
-                //        if let Err(_err) = tx.send(Event::Input(key)) {
-                //            //eprintln!("{}", err);
-                //            return;
-                //        }
-                //    }
-                //}
             })
         };
         let tick_handle = {
