@@ -1,3 +1,4 @@
+use aws_sdk_cloudwatchlogs::Client;
 use crossterm::{
     event::{poll, read, EnableMouseCapture, Event as CEvent, KeyCode},
     execute,
@@ -5,11 +6,16 @@ use crossterm::{
 };
 #[allow(dead_code)]
 use editor_input::input_from_editor;
-use std::sync::{Arc, Mutex};
-use std::{error::Error, io::stdout, time::Duration};
-use tui::{Terminal, backend::CrosstermBackend, layout::{Constraint, Direction, Layout}, style::{Color, Style}, text::{Span, Spans}, widgets::{Block, Borders, List, ListItem, Paragraph}};
+use indicium::simple::SearchIndex;
+use view::View;
+use std::sync::{Arc, Mutex, mpsc::{Receiver, Sender}};
 
-#[derive(Clone, Copy)]
+use std::{error::Error, io::stdout, time::Duration};
+use tui::{Terminal, backend::CrosstermBackend};
+
+use crate::{cwl::AwsReq, log_groups::LogGroups};
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum Widget {
     LogGroups,
     LogGroupsResults,
@@ -17,26 +23,57 @@ enum Widget {
     LogRows,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SelectedView {
+    LogGroups,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Mode {
+    Normal,
+    Insert
+}
+
 struct App {
-    selected: Option<Widget>,
+    selected: SelectedView,
     focused: Widget,
     log_groups: Vec<String>,
+    filtered_log_groups: Vec<usize>,
+    selected_log_groups: Vec<String>,
+    log_group_search_index: SearchIndex<usize>,
+    log_group_row: usize,
     query: String,
+    log_filter: String,
+    mode: Mode,
 }
 
 impl Default for App {
     fn default() -> App {
         App {
-            selected: Some(Widget::LogGroups),
+            selected: SelectedView::LogGroups,
             focused: Widget::LogGroups,
-            log_groups: vec!["hej".to_string()],
+            log_groups: vec![],
+            filtered_log_groups: vec![],
+            selected_log_groups: vec![],
+            log_group_search_index: SearchIndex::default(),
+            log_group_row: 0usize,
             query: "hej".to_string(),
+            log_filter: "".to_string(),
+            mode: Mode::Normal,
         }
     }
 }
+mod cwl;
+mod log_groups;
+mod view;
+
 
 fn main() -> Result<(), Box<dyn Error>> {
     let app = Arc::new(Mutex::new(App::default()));
+
+    let (tx, rx): (Sender<AwsReq>, Receiver<AwsReq>)  = std::sync::mpsc::channel();
+
+    let views: Vec<Box<dyn View + Send + Sync>> = vec![Box::new(LogGroups)];
 
     let app_r = app.clone();
     let main_handle = std::thread::spawn(move || {
@@ -50,74 +87,31 @@ fn main() -> Result<(), Box<dyn Error>> {
             terminal
                 .draw(|f| {
                     let app = app_r.lock().unwrap();
-                    let chunks = Layout::default()
-                        .direction(Direction::Vertical)
-                        .margin(2)
-                        .constraints(
-                            [
-                                Constraint::Length(3),
-                                Constraint::Length(3),
-                                Constraint::Min(1),
-                            ]
-                            .as_ref(),
-                        )
-                        .split(f.size());
-
-                    let input = Paragraph::new("")
-                        .style(match app.focused {
-                            Widget::LogGroups => Style::default().fg(Color::Yellow),
-                            _ => Style::default(),
-                        })
-                        .block(Block::default().borders(Borders::ALL).title("log groups"));
-                    f.render_widget(input, chunks[0]);
-                    match app.selected {
-                        Some(Widget::LogGroups | Widget::LogGroupsResults) => {
-                            let messages: Vec<ListItem> = app
-                                .log_groups
-                                .iter()
-                                .enumerate()
-                                .map(|(i, m)| {
-                                    let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m)))];
-                                    ListItem::new(content)
-                                })
-                            .collect();
-                            let messages = List::new(messages).block(
-                                Block::default()
-                                .style(match app.focused {
-                                    Widget::LogGroupsResults => Style::default().fg(Color::Yellow),
-                                    _ => Style::default(),
-                                })
-                                .borders(Borders::ALL)
-                                .title("results"),
-                            );
-                            f.render_widget(messages, chunks[2]);
-                        }
-                        _ => {},
-                    }
-
-
+                    views[app.selected as usize].draw(app, f);
                 })
                 .unwrap();
 
             if poll(Duration::from_millis(50)).unwrap() {
-                let mut app = app_r.lock().unwrap();
                 let event = read().unwrap();
+                let mut app = app_r.lock().unwrap();
                 if let CEvent::Key(key_code) = event {
                     match key_code.code {
-                        KeyCode::Enter => {
-                            app.selected = Some(app.focused);
+                        KeyCode::Char('q') if app.mode == Mode::Normal => break,
+                        k => {
+                            views[app.selected as usize].handle_input(app, k, &tx);
                         }
-                        KeyCode::Esc => {
-                            app.selected = None;
-                        },
-                        KeyCode::Char('q') => break,
-                        _ => {}
                     }
                 }
             }
         }
         disable_raw_mode().unwrap();
     });
+
+    let app_r = app.clone();
+    let _cwl_thread = std::thread::spawn(move || {
+        cwl::run(app_r, rx);
+    });
+
     main_handle.join().unwrap();
     let app_g = app.lock().unwrap();
 
