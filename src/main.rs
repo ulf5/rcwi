@@ -1,8 +1,4 @@
-use crossterm::{
-    event::{poll, read, EnableMouseCapture, Event as CEvent, KeyCode},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen},
-};
+use crossterm::{event::{DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode, poll, read}, execute, terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode}};
 #[allow(dead_code)]
 use editor_input::input_from_editor;
 use flexi_logger::{FileSpec, Logger};
@@ -131,6 +127,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
         disable_raw_mode().unwrap();
+        execute!(
+            terminal.backend_mut(),
+            LeaveAlternateScreen,
+            DisableMouseCapture
+        ).unwrap();
         let mut app = app_r.lock().unwrap();
         if app.quit {
             break;
