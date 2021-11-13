@@ -78,7 +78,7 @@ mod overview;
 fn main() -> Result<(), Box<dyn Error>> {
     let app = Arc::new(Mutex::new(App::default()));
     Logger::try_with_str("info")?
-    .log_to_file(FileSpec::default())
+    .log_to_file(FileSpec::default().suppress_timestamp())
     .start()?;
     let (tx, rx): (Sender<AwsReq>, Receiver<AwsReq>)  = std::sync::mpsc::channel();
 
