@@ -1,4 +1,3 @@
-use aws_sdk_cloudwatchlogs::Client;
 use crossterm::{
     event::{poll, read, EnableMouseCapture, Event as CEvent, KeyCode},
     execute,
@@ -7,13 +6,12 @@ use crossterm::{
 #[allow(dead_code)]
 use editor_input::input_from_editor;
 use indicium::simple::SearchIndex;
-use view::View;
 use std::sync::{Arc, Mutex, mpsc::{Receiver, Sender}};
 
 use std::{error::Error, io::stdout, time::Duration};
 use tui::{Terminal, backend::CrosstermBackend};
 
-use crate::{cwl::AwsReq, log_groups::LogGroups};
+use crate::cwl::AwsReq;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Widget {
@@ -65,15 +63,12 @@ impl Default for App {
 }
 mod cwl;
 mod log_groups;
-mod view;
 
 
 fn main() -> Result<(), Box<dyn Error>> {
     let app = Arc::new(Mutex::new(App::default()));
 
     let (tx, rx): (Sender<AwsReq>, Receiver<AwsReq>)  = std::sync::mpsc::channel();
-
-    let views: Vec<Box<dyn View + Send + Sync>> = vec![Box::new(LogGroups)];
 
     let app_r = app.clone();
     let main_handle = std::thread::spawn(move || {
@@ -87,18 +82,22 @@ fn main() -> Result<(), Box<dyn Error>> {
             terminal
                 .draw(|f| {
                     let app = app_r.lock().unwrap();
-                    views[app.selected as usize].draw(app, f);
+                    match app.selected {
+                        SelectedView::LogGroups => log_groups::draw(app, f),
+                    };
                 })
                 .unwrap();
 
             if poll(Duration::from_millis(50)).unwrap() {
                 let event = read().unwrap();
-                let mut app = app_r.lock().unwrap();
+                let app = app_r.lock().unwrap();
                 if let CEvent::Key(key_code) = event {
                     match key_code.code {
                         KeyCode::Char('q') if app.mode == Mode::Normal => break,
                         k => {
-                            views[app.selected as usize].handle_input(app, k, &tx);
+                            match app.selected {
+                                SelectedView::LogGroups => log_groups::handle_input(app, k, &tx),
+                            };
                         }
                     }
                 }
