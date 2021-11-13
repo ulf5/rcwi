@@ -78,6 +78,9 @@ pub(crate) fn handle_input(
                 Widget::LogGroups => {
                     app.selected = SelectedView::LogGroups;
                     app.focused = Widget::LogGroups;
+                    if app.log_groups.is_empty() {
+                        cwl.send(AwsReq::ListLogGroups).unwrap();
+                    }
                 }
                 Widget::Query => app.break_inner = true,
                 _ => todo!(),
