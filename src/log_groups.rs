@@ -1,6 +1,6 @@
 use std::{io::Stdout, sync::mpsc::Sender};
 
-use crate::{Mode, SelectedView, Widget, cwl::AwsReq, status_bar};
+use crate::{cwl::AwsReq, status_bar, Mode, SelectedView, Widget};
 use crossterm::event::KeyCode;
 use tui::{
     backend::CrosstermBackend,
@@ -19,7 +19,14 @@ pub(crate) fn draw(
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(2)
-        .constraints([Constraint::Length(3), Constraint::Min(1), Constraint::Length(3)].as_ref())
+        .constraints(
+            [
+                Constraint::Length(3),
+                Constraint::Min(1),
+                Constraint::Length(3),
+            ]
+            .as_ref(),
+        )
         .split(frame.size());
 
     let input = Paragraph::new(app.log_filter.as_str())
@@ -27,7 +34,11 @@ pub(crate) fn draw(
             Widget::LogGroups => Style::default().fg(Color::Yellow),
             _ => Style::default(),
         })
-        .block(Block::default().borders(Borders::ALL).title("filter log groups"));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("filter log groups"),
+        );
     frame.render_widget(input, chunks[0]);
     if app.mode == Mode::Insert && app.focused == Widget::LogGroups {
         frame.set_cursor(
@@ -44,7 +55,11 @@ pub(crate) fn draw(
         .map(|(_i, x)| x)
         .enumerate()
         .map(|(i, m)| {
-            let marker = if app.selected_log_groups.contains(m) { '*' } else { ' ' };
+            let marker = if app.selected_log_groups.contains(m) {
+                '*'
+            } else {
+                ' '
+            };
             let content = vec![Spans::from(Span::raw(format!("[{}] {}: {}", marker, i, m)))];
             ListItem::new(content).style(
                 if app.focused != Widget::LogGroupsResults || app.mode != Mode::Insert {
@@ -144,16 +159,14 @@ pub(crate) fn handle_input(
                 KeyCode::Enter => {
                     let value = app.log_groups[app.filtered_log_groups[app.log_group_row]].clone();
                     let num_selected_before = app.selected_log_groups.len();
-                    app.selected_log_groups.retain(|x| {
-                        x != &value
-                    });
+                    app.selected_log_groups.retain(|x| x != &value);
                     if num_selected_before == app.selected_log_groups.len() {
                         app.selected_log_groups.push(value);
                     }
                 }
                 _ => {}
             },
-            _ => {},
+            _ => {}
         },
     }
 }

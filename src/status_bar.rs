@@ -1,15 +1,21 @@
 use std::{fmt::Display, io, sync::MutexGuard};
 
-use tui::{Frame, backend::CrosstermBackend, layout::Rect, style::{Color, Style}, widgets::{Block, Borders, Paragraph}};
+use tui::{
+    backend::CrosstermBackend,
+    layout::Rect,
+    style::{Color, Style},
+    widgets::{Block, Borders, Paragraph},
+    Frame,
+};
 
 pub(crate) struct StatusMessage {
     text: String,
-    level: StatusLevel
+    level: StatusLevel,
 }
 
 pub(crate) enum StatusLevel {
     Info,
-    Error
+    Error,
 }
 
 impl Display for StatusLevel {
@@ -25,7 +31,7 @@ impl Default for StatusMessage {
     fn default() -> Self {
         Self {
             text: "".to_string(),
-            level: StatusLevel::Info
+            level: StatusLevel::Info,
         }
     }
 }
@@ -45,8 +51,11 @@ impl StatusMessage {
     }
 }
 
-
-pub(crate) fn draw(app: MutexGuard<crate::App>, frame: &mut Frame<CrosstermBackend<io::Stdout>>, area: Rect) {
+pub(crate) fn draw(
+    app: MutexGuard<crate::App>,
+    frame: &mut Frame<CrosstermBackend<io::Stdout>>,
+    area: Rect,
+) {
     let status_str = format!("[{}] {}", app.status_message.level, app.status_message.text);
     let status_bar = Paragraph::new(status_str.as_str())
         .style(match app.status_message.level {

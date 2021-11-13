@@ -7,10 +7,13 @@ use crossterm::{
 use editor_input::input_from_editor;
 use flexi_logger::{FileSpec, Logger};
 use indicium::simple::SearchIndex;
-use std::sync::{Arc, Mutex, mpsc::{Receiver, Sender}};
+use std::sync::{
+    mpsc::{Receiver, Sender},
+    Arc, Mutex,
+};
 
 use std::{error::Error, io::stdout, time::Duration};
-use tui::{Terminal, backend::CrosstermBackend};
+use tui::{backend::CrosstermBackend, Terminal};
 
 use crate::{cwl::AwsReq, status_bar::StatusMessage};
 
@@ -31,7 +34,7 @@ enum SelectedView {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Mode {
     Normal,
-    Insert
+    Insert,
 }
 
 struct App {
@@ -62,7 +65,8 @@ impl Default for App {
             log_group_search_index: SearchIndex::default(),
             log_group_row: 0usize,
             query: "fields @timestamp, @message\n\
-        | sort @timestamp desc\n".to_string(),
+        | sort @timestamp desc\n"
+                .to_string(),
             log_filter: "".to_string(),
             mode: Mode::Normal,
             break_inner: false,
@@ -74,68 +78,65 @@ impl Default for App {
 }
 mod cwl;
 mod log_groups;
-mod status_bar;
 mod overview;
-
+mod status_bar;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let app = Arc::new(Mutex::new(App::default()));
     Logger::try_with_str("info")?
-    .log_to_file(FileSpec::default().suppress_timestamp())
-    .start()?;
-    let (tx, rx): (Sender<AwsReq>, Receiver<AwsReq>)  = std::sync::mpsc::channel();
+        .log_to_file(FileSpec::default().suppress_timestamp())
+        .start()?;
+    let (tx, rx): (Sender<AwsReq>, Receiver<AwsReq>) = std::sync::mpsc::channel();
 
     let app_r = app.clone();
-    let main_handle = std::thread::spawn(move || {
+    let main_handle = std::thread::spawn(move || loop {
+        enable_raw_mode().unwrap();
+        let mut stdout = stdout();
+        execute!(stdout, EnterAlternateScreen, EnableMouseCapture).unwrap();
+        let backend = CrosstermBackend::new(stdout);
+        let mut terminal = Terminal::new(backend).unwrap();
+
         loop {
-            enable_raw_mode().unwrap();
-            let mut stdout = stdout();
-            execute!(stdout, EnterAlternateScreen, EnableMouseCapture).unwrap();
-            let backend = CrosstermBackend::new(stdout);
-            let mut terminal = Terminal::new(backend).unwrap();
+            terminal
+                .draw(|f| {
+                    let app = app_r.lock().unwrap();
+                    match app.selected {
+                        SelectedView::LogGroups => log_groups::draw(app, f),
+                        SelectedView::Overview => overview::draw(app, f),
+                    };
+                })
+                .unwrap();
 
-            loop {
-                terminal
-                    .draw(|f| {
-                        let app = app_r.lock().unwrap();
-                        match app.selected {
-                            SelectedView::LogGroups => log_groups::draw(app, f),
-                            SelectedView::Overview => overview::draw(app, f),
-                        };
-                    })
-                    .unwrap();
-
-                if poll(Duration::from_millis(50)).unwrap() {
-                    let event = read().unwrap();
-                    let mut app = app_r.lock().unwrap();
-                    if let CEvent::Key(key_code) = event {
-                        match key_code.code {
-                            KeyCode::Char('q') if app.mode == Mode::Normal => {
-                                app.quit = true;
-                                break;
-                            },
-                            k => {
-                                match app.selected {
-                                    SelectedView::LogGroups => log_groups::handle_input(app, k, &tx),
-                                    SelectedView::Overview => overview::handle_input(app, k, &tx),
-                                };
-                            }
+            if poll(Duration::from_millis(50)).unwrap() {
+                let event = read().unwrap();
+                let mut app = app_r.lock().unwrap();
+                if let CEvent::Key(key_code) = event {
+                    match key_code.code {
+                        KeyCode::Char('q') if app.mode == Mode::Normal => {
+                            app.quit = true;
+                            break;
+                        }
+                        k => {
+                            match app.selected {
+                                SelectedView::LogGroups => log_groups::handle_input(app, k, &tx),
+                                SelectedView::Overview => overview::handle_input(app, k, &tx),
+                            };
                         }
                     }
-                    let app = app_r.lock().unwrap();
-                    if app.break_inner {
-                        break;
-                    }
+                }
+                let app = app_r.lock().unwrap();
+                if app.break_inner {
+                    break;
                 }
             }
-            disable_raw_mode().unwrap();
-            let mut app = app_r.lock().unwrap();
-            if app.quit {
-                break;
-            }
-            app.query = input_from_editor(&app.query).unwrap();
-            app.break_inner = false;
         }
+        disable_raw_mode().unwrap();
+        let mut app = app_r.lock().unwrap();
+        if app.quit {
+            break;
+        }
+        app.query = input_from_editor(&app.query).unwrap();
+        app.break_inner = false;
     });
 
     let app_r = app.clone();

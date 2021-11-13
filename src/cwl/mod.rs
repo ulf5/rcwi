@@ -7,7 +7,7 @@ use aws_sdk_cloudwatchlogs::Client;
 use indicium::simple::{Indexable, SearchIndex};
 use log::{error, info};
 
-use crate::{App, log_groups::filter_log_groups, status_bar::StatusMessage};
+use crate::{log_groups::filter_log_groups, status_bar::StatusMessage, App};
 
 pub(crate) enum AwsReq {
     ListLogGroups,
@@ -41,61 +41,73 @@ pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
             if let Ok(req) = rx.recv() {
                 match req {
                     AwsReq::ListLogGroups => {
-                        let mut res = client.describe_log_groups().send().await.unwrap();
-                        {
-                            let names: Vec<String> = res
-                                .log_groups
-                                .unwrap_or(vec![])
-                                .iter()
-                                .map(|z| z.log_group_name.as_ref().unwrap().clone())
-                                .collect();
-                            let mut app_ = app.lock().unwrap();
-                            app_.log_group_search_index = SearchIndex::default();
-                            names
-                                .iter()
-                                .map(|x| MyString::from(x.as_str()))
-                                .enumerate()
-                                .for_each(|(index, element)| {
-                                    app_.log_group_search_index.insert(&index, &element)
-                                });
-                            app_.log_groups = names;
-                            filter_log_groups(&mut app_);
-                        }
-                        loop {
-                            if res.next_token.is_none() {
-                                break;
-                            }
-                            res = client
-                                .describe_log_groups()
-                                .next_token(res.next_token.as_ref().unwrap())
-                                .send()
-                                .await
-                                .unwrap();
-                            let names: Vec<String> = res
-                                .log_groups
-                                .unwrap_or(vec![])
-                                .iter()
-                                .map(|z| z.log_group_name.as_ref().unwrap().clone())
-                                .collect();
+                        let res = client.describe_log_groups().send().await;
+                        match res {
+                            Ok(mut res) => {
+                                {
+                                    let names: Vec<String> = res
+                                        .log_groups
+                                        .unwrap_or(vec![])
+                                        .iter()
+                                        .map(|z| z.log_group_name.as_ref().unwrap().clone())
+                                        .collect();
+                                    let mut app_ = app.lock().unwrap();
+                                    app_.log_group_search_index = SearchIndex::default();
+                                    names
+                                        .iter()
+                                        .map(|x| MyString::from(x.as_str()))
+                                        .enumerate()
+                                        .for_each(|(index, element)| {
+                                            app_.log_group_search_index.insert(&index, &element)
+                                        });
+                                    app_.log_groups = names;
+                                    filter_log_groups(&mut app_);
+                                }
+                                loop {
+                                    if res.next_token.is_none() {
+                                        break;
+                                    }
+                                    res = client
+                                        .describe_log_groups()
+                                        .next_token(res.next_token.as_ref().unwrap())
+                                        .send()
+                                        .await
+                                        .unwrap();
+                                    let names: Vec<String> = res
+                                        .log_groups
+                                        .unwrap_or(vec![])
+                                        .iter()
+                                        .map(|z| z.log_group_name.as_ref().unwrap().clone())
+                                        .collect();
 
-                            {
+                                    {
+                                        let mut app_ = app.lock().unwrap();
+                                        names
+                                            .iter()
+                                            .map(|x| MyString::from(x.as_str()))
+                                            .enumerate()
+                                            .for_each(|(index, element)| {
+                                                app_.log_group_search_index.insert(&index, &element)
+                                            });
+                                        app_.log_groups.extend(names);
+                                        filter_log_groups(&mut app_);
+                                    }
+                                }
                                 let mut app_ = app.lock().unwrap();
-                                names
-                                    .iter()
-                                    .map(|x| MyString::from(x.as_str()))
-                                    .enumerate()
-                                    .for_each(|(index, element)| {
-                                        app_.log_group_search_index.insert(&index, &element)
-                                    });
-                                app_.log_groups.extend(names);
-                                filter_log_groups(&mut app_);
-                            }
+                                app_.status_message = StatusMessage::info("Log groups request completed");
+                            },
+                            Err(err) => {
+                                error!("{:?}", err);
+                                let mut app_ = app.lock().unwrap();
+                                app_.status_message = StatusMessage::error("Log groups request failed");
+                            },
                         }
                     }
                     AwsReq::RunQuery => {
                         let (log_groups, query_string) = {
-                            let app_ = app.lock().unwrap();
+                            let mut app_ = app.lock().unwrap();
                             let log_groups = app_.selected_log_groups.clone();
+                            app_.status_message = StatusMessage::info("Cloudwatch Insights query started");
                             (log_groups, app_.query.clone())
                         };
                         let res = client

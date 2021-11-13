@@ -1,6 +1,6 @@
 use std::{io::Stdout, sync::mpsc::Sender};
 
-use crate::{Mode, SelectedView, Widget, cwl::AwsReq, status_bar};
+use crate::{cwl::AwsReq, status_bar, Mode, SelectedView, Widget};
 use crossterm::event::KeyCode;
 use tui::{
     backend::CrosstermBackend,
@@ -18,7 +18,15 @@ pub(crate) fn draw(
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(2)
-        .constraints([Constraint::Length(3), Constraint::Length(9), Constraint::Min(1), Constraint::Length(3)].as_ref())
+        .constraints(
+            [
+                Constraint::Length(3),
+                Constraint::Length(9),
+                Constraint::Min(1),
+                Constraint::Length(3),
+            ]
+            .as_ref(),
+        )
         .split(frame.size());
 
     let selected_log_groups_string = app.selected_log_groups.join(", ");
@@ -74,19 +82,17 @@ pub(crate) fn handle_input(
     cwl: &Sender<AwsReq>,
 ) {
     match key_code {
-        KeyCode::Enter => {
-            match app.focused {
-                Widget::LogGroups => {
-                    app.selected = SelectedView::LogGroups;
-                    app.focused = Widget::LogGroups;
-                    if app.log_groups.is_empty() {
-                        cwl.send(AwsReq::ListLogGroups).unwrap();
-                    }
+        KeyCode::Enter => match app.focused {
+            Widget::LogGroups => {
+                app.selected = SelectedView::LogGroups;
+                app.focused = Widget::LogGroups;
+                if app.log_groups.is_empty() {
+                    cwl.send(AwsReq::ListLogGroups).unwrap();
                 }
-                Widget::Query => app.break_inner = true,
-                _ => todo!(),
             }
-        }
+            Widget::Query => app.break_inner = true,
+            _ => todo!(),
+        },
         KeyCode::Char('j') | KeyCode::Down => match app.focused {
             Widget::LogGroups => {
                 app.focused = Widget::Query;
@@ -105,7 +111,7 @@ pub(crate) fn handle_input(
         },
         KeyCode::Char('r') => {
             cwl.send(AwsReq::RunQuery).unwrap();
-        },
+        }
         _ => {}
     }
 }
