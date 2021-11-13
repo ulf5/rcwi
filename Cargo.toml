@@ -13,7 +13,6 @@ members = [
 [dependencies]
 editor-input = { path = "./editor-input/" }
 indicium = "0.3.0"
-#cursive = "*"
 tui = { version = "0.16.0", features = ["crossterm"] }
 crossterm = "*"
 unicode-width = "0.1"
