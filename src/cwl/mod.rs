@@ -7,7 +7,7 @@ use aws_sdk_cloudwatchlogs::Client;
 use indicium::simple::{Indexable, SearchIndex};
 use log::{error, info};
 
-use crate::{log_groups::filter_log_groups, App};
+use crate::{App, log_groups::filter_log_groups, status_bar::StatusMessage};
 
 pub(crate) enum AwsReq {
     ListLogGroups,
@@ -128,10 +128,15 @@ pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
                                     if let Some(results) = res.results {
                                         let mut app_ = app.lock().unwrap();
                                         app_.results = results.iter().map(|x| x.iter().map(|y| format!("{:?}", y)).collect::<Vec<_>>().join(", ")).collect();
+                                        app_.status_message = StatusMessage::info("Cloudwatch Insights query completed");
                                     }
                                 }
                             },
-                            Err(e) => error!("{:?}", e),
+                            Err(e) => {
+                                error!("{:?}", e);
+                                let mut app_ = app.lock().unwrap();
+                                app_.status_message = StatusMessage::error("Cloudwatch Insights query failed");
+                            },
                         }
                     }
 

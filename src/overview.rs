@@ -1,6 +1,6 @@
 use std::{io::Stdout, sync::mpsc::Sender};
 
-use crate::{Mode, SelectedView, Widget, cwl::AwsReq};
+use crate::{Mode, SelectedView, Widget, cwl::AwsReq, status_bar};
 use crossterm::event::KeyCode;
 use tui::{
     backend::CrosstermBackend,
@@ -18,7 +18,7 @@ pub(crate) fn draw(
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(2)
-        .constraints([Constraint::Length(3), Constraint::Length(9), Constraint::Min(1)].as_ref())
+        .constraints([Constraint::Length(3), Constraint::Length(9), Constraint::Min(1), Constraint::Length(3)].as_ref())
         .split(frame.size());
 
     let selected_log_groups_string = app.selected_log_groups.join(", ");
@@ -65,6 +65,7 @@ pub(crate) fn draw(
             .title("results"),
     );
     frame.render_widget(messages, chunks[2]);
+    status_bar::draw(app, frame, chunks[3]);
 }
 
 pub(crate) fn handle_input(

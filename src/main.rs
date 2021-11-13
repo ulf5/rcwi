@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex, mpsc::{Receiver, Sender}};
 use std::{error::Error, io::stdout, time::Duration};
 use tui::{Terminal, backend::CrosstermBackend};
 
-use crate::cwl::AwsReq;
+use crate::{cwl::AwsReq, status_bar::StatusMessage};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Widget {
@@ -48,6 +48,7 @@ struct App {
     mode: Mode,
     break_inner: bool,
     quit: bool,
+    status_message: StatusMessage,
 }
 
 impl Default for App {
@@ -67,11 +68,13 @@ impl Default for App {
             break_inner: false,
             quit: false,
             results: vec![],
+            status_message: StatusMessage::default(),
         }
     }
 }
 mod cwl;
 mod log_groups;
+mod status_bar;
 mod overview;
 
 
