@@ -5,6 +5,7 @@ use crossterm::{
 };
 #[allow(dead_code)]
 use editor_input::input_from_editor;
+use flexi_logger::{FileSpec, Logger};
 use indicium::simple::SearchIndex;
 use std::sync::{Arc, Mutex, mpsc::{Receiver, Sender}};
 
@@ -76,7 +77,9 @@ mod overview;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let app = Arc::new(Mutex::new(App::default()));
-
+    Logger::try_with_str("info")?
+    .log_to_file(FileSpec::default())
+    .start()?;
     let (tx, rx): (Sender<AwsReq>, Receiver<AwsReq>)  = std::sync::mpsc::channel();
 
     let app_r = app.clone();

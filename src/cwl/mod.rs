@@ -5,6 +5,7 @@ use std::{
 
 use aws_sdk_cloudwatchlogs::Client;
 use indicium::simple::{Indexable, SearchIndex};
+use log::{error, info};
 
 use crate::{log_groups::filter_log_groups, App};
 
@@ -102,26 +103,38 @@ pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
                             .set_log_group_names(Some(log_groups))
                             .query_string(query_string)
                             .start_time(0i64)
-                            .end_time(0i64)
+                            .end_time(1636811010i64)
                             .send()
-                            .await
-                            .unwrap();
-                        if let Some(query_id) = res.query_id {
-                            let mut res;
-                            loop {
-                                res = client.get_query_results().query_id(query_id.clone()).send().await.unwrap();
-                                match res.status {
-                                    Some(x) if x != aws_sdk_cloudwatchlogs::model::QueryStatus::Running => break,
-                                    _ => {},
+                            .await;
+                        match res {
+                            Ok(res) => {
+
+                                if let Some(query_id) = res.query_id {
+                                    let mut res;
+                                    loop {
+                                        res = client.get_query_results().query_id(query_id.clone()).send().await.unwrap();
+                                        match res.status {
+                                            Some(x) if x != aws_sdk_cloudwatchlogs::model::QueryStatus::Running => break,
+                                            _ => {
+                                                info!("query: {:?}", res);
+                                                if let Some(results) = res.results {
+                                                    let mut app_ = app.lock().unwrap();
+                                                    app_.results = results.iter().map(|x| x.iter().map(|y| format!("{:?}", y)).collect::<Vec<_>>().join(", ")).collect();
+                                                }
+                                            },
+                                        }
+                                        tokio::time::sleep(Duration::from_millis(500)).await;
+                                    }
+                                    if let Some(results) = res.results {
+                                        let mut app_ = app.lock().unwrap();
+                                        app_.results = results.iter().map(|x| x.iter().map(|y| format!("{:?}", y)).collect::<Vec<_>>().join(", ")).collect();
+                                    }
                                 }
-                                tokio::time::sleep(Duration::from_millis(500)).await;
-                            }
-                            if let Some(results) = res.results {
-                                let mut app_ = app.lock().unwrap();
-                                app_.results = results.iter().map(|x| x.iter().map(|y| format!("{:?}", y)).collect::<Vec<_>>().join(", ")).collect();
-                            }
+                            },
+                            Err(e) => error!("{:?}", e),
                         }
                     }
+
                 }
             }
         }

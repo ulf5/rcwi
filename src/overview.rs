@@ -39,15 +39,11 @@ pub(crate) fn draw(
     frame.render_widget(log_groups, chunks[1]);
 
     let messages: Vec<ListItem> = app
-        .log_groups
+        .results
         .iter()
         .enumerate()
-        .filter(|(i, _e)| app.filtered_log_groups.contains(i))
-        .map(|(_i, x)| x)
-        .enumerate()
         .map(|(i, m)| {
-            let marker = if app.selected_log_groups.contains(m) { '*' } else { ' ' };
-            let content = vec![Spans::from(Span::raw(format!("[{}] {}: {}", marker, i, m)))];
+            let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m)))];
             ListItem::new(content).style(
                 if app.focused != Widget::LogGroupsResults || app.mode != Mode::Insert {
                     Style::default()
