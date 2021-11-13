@@ -1,6 +1,6 @@
 use std::{io::Stdout, sync::mpsc::Sender};
 
-use crate::{cwl::AwsReq, Mode, Widget};
+use crate::{Mode, SelectedView, Widget, cwl::AwsReq};
 use crossterm::event::KeyCode;
 use tui::{
     backend::CrosstermBackend,
@@ -27,7 +27,7 @@ pub(crate) fn draw(
             Widget::LogGroups => Style::default().fg(Color::Yellow),
             _ => Style::default(),
         })
-        .block(Block::default().borders(Borders::ALL).title("log groups"));
+        .block(Block::default().borders(Borders::ALL).title("filter log groups"));
     frame.render_widget(input, chunks[0]);
     if app.mode == Mode::Insert && app.focused == Widget::LogGroups {
         frame.set_cursor(
@@ -76,6 +76,9 @@ pub(crate) fn handle_input(
 ) {
     match app.mode {
         Mode::Normal => match key_code {
+            KeyCode::Esc => {
+                app.selected = SelectedView::Overview;
+            }
             KeyCode::Enter => {
                 if app.log_groups.is_empty() {
                     cwl.send(AwsReq::ListLogGroups).unwrap();

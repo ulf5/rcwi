@@ -23,6 +23,7 @@ enum Widget {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum SelectedView {
+    Overview,
     LogGroups,
 }
 
@@ -41,28 +42,36 @@ struct App {
     log_group_search_index: SearchIndex<usize>,
     log_group_row: usize,
     query: String,
+    results: Vec<String>,
     log_filter: String,
     mode: Mode,
+    break_inner: bool,
+    quit: bool,
 }
 
 impl Default for App {
     fn default() -> App {
         App {
-            selected: SelectedView::LogGroups,
+            selected: SelectedView::Overview,
             focused: Widget::LogGroups,
             log_groups: vec![],
             filtered_log_groups: vec![],
             selected_log_groups: vec![],
             log_group_search_index: SearchIndex::default(),
             log_group_row: 0usize,
-            query: "hej".to_string(),
+            query: "fields @timestamp, @message\n\
+        | sort @timestamp desc\n".to_string(),
             log_filter: "".to_string(),
             mode: Mode::Normal,
+            break_inner: false,
+            quit: false,
+            results: vec![],
         }
     }
 }
 mod cwl;
 mod log_groups;
+mod overview;
 
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -72,38 +81,55 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let app_r = app.clone();
     let main_handle = std::thread::spawn(move || {
-        enable_raw_mode().unwrap();
-        let mut stdout = stdout();
-        execute!(stdout, EnterAlternateScreen, EnableMouseCapture).unwrap();
-        let backend = CrosstermBackend::new(stdout);
-        let mut terminal = Terminal::new(backend).unwrap();
-
         loop {
-            terminal
-                .draw(|f| {
-                    let app = app_r.lock().unwrap();
-                    match app.selected {
-                        SelectedView::LogGroups => log_groups::draw(app, f),
-                    };
-                })
-                .unwrap();
+            enable_raw_mode().unwrap();
+            let mut stdout = stdout();
+            execute!(stdout, EnterAlternateScreen, EnableMouseCapture).unwrap();
+            let backend = CrosstermBackend::new(stdout);
+            let mut terminal = Terminal::new(backend).unwrap();
 
-            if poll(Duration::from_millis(50)).unwrap() {
-                let event = read().unwrap();
-                let app = app_r.lock().unwrap();
-                if let CEvent::Key(key_code) = event {
-                    match key_code.code {
-                        KeyCode::Char('q') if app.mode == Mode::Normal => break,
-                        k => {
-                            match app.selected {
-                                SelectedView::LogGroups => log_groups::handle_input(app, k, &tx),
-                            };
+            loop {
+                terminal
+                    .draw(|f| {
+                        let app = app_r.lock().unwrap();
+                        match app.selected {
+                            SelectedView::LogGroups => log_groups::draw(app, f),
+                            SelectedView::Overview => overview::draw(app, f),
+                        };
+                    })
+                    .unwrap();
+
+                if poll(Duration::from_millis(50)).unwrap() {
+                    let event = read().unwrap();
+                    let mut app = app_r.lock().unwrap();
+                    if let CEvent::Key(key_code) = event {
+                        match key_code.code {
+                            KeyCode::Char('q') if app.mode == Mode::Normal => {
+                                app.quit = true;
+                                break;
+                            },
+                            k => {
+                                match app.selected {
+                                    SelectedView::LogGroups => log_groups::handle_input(app, k, &tx),
+                                    SelectedView::Overview => overview::handle_input(app, k, &tx),
+                                };
+                            }
                         }
+                    }
+                    let app = app_r.lock().unwrap();
+                    if app.break_inner {
+                        break;
                     }
                 }
             }
+            disable_raw_mode().unwrap();
+            let mut app = app_r.lock().unwrap();
+            if app.quit {
+                break;
+            }
+            app.query = input_from_editor(&app.query).unwrap();
+            app.break_inner = false;
         }
-        disable_raw_mode().unwrap();
     });
 
     let app_r = app.clone();
@@ -112,9 +138,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     });
 
     main_handle.join().unwrap();
-    let app_g = app.lock().unwrap();
-
-    println!("{}", input_from_editor(&app_g.query)?);
 
     Ok(())
 }
