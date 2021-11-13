@@ -125,10 +125,10 @@ pub(crate) fn handle_input(
                 KeyCode::Esc => {
                     app.mode = Mode::Normal;
                 }
-                KeyCode::Char('j') => {
+                KeyCode::Char('j') | KeyCode::Down => {
                     app.log_group_row = (app.log_group_row + 1) % app.filtered_log_groups.len();
                 }
-                KeyCode::Char('k') => {
+                KeyCode::Char('k') | KeyCode::Up => {
                     let l = app.filtered_log_groups.len();
                     let r = app.log_group_row;
                     app.log_group_row = if r > 0 && l > 0 {

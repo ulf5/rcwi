@@ -83,7 +83,7 @@ pub(crate) fn handle_input(
                 _ => todo!(),
             }
         }
-        KeyCode::Char('j') => match app.focused {
+        KeyCode::Char('j') | KeyCode::Down => match app.focused {
             Widget::LogGroups => {
                 app.focused = Widget::Query;
             }
@@ -91,7 +91,7 @@ pub(crate) fn handle_input(
                 app.focused = Widget::LogGroups;
             }
         },
-        KeyCode::Char('k') => match app.focused {
+        KeyCode::Char('k') | KeyCode::Up => match app.focused {
             Widget::LogGroups => {
                 app.focused = Widget::Query;
             }
