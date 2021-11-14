@@ -11,7 +11,7 @@ use std::sync::{
 use std::{error::Error, io::stdout, time::Duration};
 use tui::{backend::CrosstermBackend, Terminal};
 
-use crate::{cwl::AwsReq, status_bar::StatusMessage};
+use crate::{cwl::AwsReq, status_bar::StatusMessage, time_select::TimeSelector};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Widget {
@@ -48,6 +48,7 @@ struct App {
     break_inner: bool,
     quit: bool,
     status_message: StatusMessage,
+    time_selector: TimeSelector,
 }
 
 impl Default for App {
@@ -69,6 +70,7 @@ impl Default for App {
             quit: false,
             results: vec![],
             status_message: StatusMessage::default(),
+            time_selector: TimeSelector::default(),
         }
     }
 }
@@ -76,6 +78,7 @@ mod cwl;
 mod log_groups;
 mod overview;
 mod status_bar;
+mod time_select;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let app = Arc::new(Mutex::new(App::default()));

@@ -1,6 +1,6 @@
 use std::{io::Stdout, sync::mpsc::Sender};
 
-use crate::{cwl::AwsReq, status_bar, Mode, SelectedView, Widget};
+use crate::{Mode, SelectedView, Widget, cwl::AwsReq, status_bar, time_select};
 use crossterm::event::KeyCode;
 use tui::{
     backend::CrosstermBackend,
@@ -29,6 +29,16 @@ pub(crate) fn draw(
         )
         .split(frame.size());
 
+    let first_chunk = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Min(1),
+                Constraint::Length(20),
+            ]
+            .as_ref(),
+        )
+        .split(chunks[0]);
     let selected_log_groups_string = app.selected_log_groups.join(", ");
     let log_groups = Paragraph::new(selected_log_groups_string.as_str())
         .style(match app.focused {
@@ -36,7 +46,9 @@ pub(crate) fn draw(
             _ => Style::default(),
         })
         .block(Block::default().borders(Borders::ALL).title("log groups"));
-    frame.render_widget(log_groups, chunks[0]);
+    frame.render_widget(log_groups, first_chunk[0]);
+
+    time_select::draw(&app, frame, first_chunk[1]);
 
     let log_groups = Paragraph::new(app.query.as_str())
         .style(match app.focused {
