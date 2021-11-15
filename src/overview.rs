@@ -1,6 +1,6 @@
 use std::{io::Stdout, sync::mpsc::Sender};
 
-use crate::{Mode, SelectedView, Widget, cwl::AwsReq, status_bar, time_select};
+use crate::{cwl::AwsReq, status_bar, time_select, Mode, SelectedView, Widget};
 use crossterm::event::KeyCode;
 use tui::{
     backend::CrosstermBackend,
@@ -31,13 +31,7 @@ pub(crate) fn draw(
 
     let first_chunk = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(
-            [
-                Constraint::Min(1),
-                Constraint::Length(20),
-            ]
-            .as_ref(),
-        )
+        .constraints([Constraint::Min(1), Constraint::Length(20)].as_ref())
         .split(chunks[0]);
     let selected_log_groups_string = app.selected_log_groups.join(", ");
     let log_groups = Paragraph::new(selected_log_groups_string.as_str())
@@ -103,7 +97,17 @@ pub(crate) fn handle_input(
                 }
             }
             Widget::Query => app.break_inner = true,
-            _ => todo!(),
+            Widget::TimeSelector => app.time_selector.popup = true,
+            _ => {}
+        },
+        KeyCode::Char('h') | KeyCode::Left => match app.focused {
+            Widget::LogGroups => {
+                app.focused = Widget::TimeSelector;
+            }
+            Widget::TimeSelector => {
+                app.focused = Widget::LogGroups;
+            }
+            _ => {}
         },
         KeyCode::Char('j') | KeyCode::Down => match app.focused {
             Widget::LogGroups => {
@@ -120,6 +124,15 @@ pub(crate) fn handle_input(
             _ => {
                 app.focused = Widget::LogGroups;
             }
+        },
+        KeyCode::Char('l') | KeyCode::Right => match app.focused {
+            Widget::LogGroups => {
+                app.focused = Widget::TimeSelector;
+            }
+            Widget::TimeSelector => {
+                app.focused = Widget::LogGroups;
+            }
+            _ => {}
         },
         KeyCode::Char('r') => {
             cwl.send(AwsReq::RunQuery).unwrap();

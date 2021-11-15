@@ -19,14 +19,7 @@ pub(crate) fn draw(
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(2)
-        .constraints(
-            [
-                Constraint::Length(3),
-                Constraint::Min(1),
-                Constraint::Length(3),
-            ]
-            .as_ref(),
-        )
+        .constraints([Constraint::Length(3), Constraint::Min(1), Constraint::Length(3)].as_ref())
         .split(frame.size());
 
     let input = Paragraph::new(app.log_filter.as_str())
@@ -34,17 +27,10 @@ pub(crate) fn draw(
             Widget::LogGroups => Style::default().fg(Color::Yellow),
             _ => Style::default(),
         })
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("filter log groups"),
-        );
+        .block(Block::default().borders(Borders::ALL).title("filter log groups"));
     frame.render_widget(input, chunks[0]);
     if app.mode == Mode::Insert && app.focused == Widget::LogGroups {
-        frame.set_cursor(
-            chunks[0].x + app.log_filter.width() as u16 + 1,
-            chunks[0].y + 1,
-        )
+        frame.set_cursor(chunks[0].x + app.log_filter.width() as u16 + 1, chunks[0].y + 1)
     }
 
     let messages: Vec<ListItem> = app
@@ -55,11 +41,7 @@ pub(crate) fn draw(
         .map(|(_i, x)| x)
         .enumerate()
         .map(|(i, m)| {
-            let marker = if app.selected_log_groups.contains(m) {
-                '*'
-            } else {
-                ' '
-            };
+            let marker = if app.selected_log_groups.contains(m) { '*' } else { ' ' };
             let content = vec![Spans::from(Span::raw(format!("[{}] {}: {}", marker, i, m)))];
             ListItem::new(content).style(
                 if app.focused != Widget::LogGroupsResults || app.mode != Mode::Insert {

@@ -8,14 +8,17 @@ use std::{
 use tui::{
     backend::CrosstermBackend,
     layout::Rect,
-    style::Style,
+    style::{Color, Style},
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
 
+use crate::Widget;
+
 pub(crate) struct TimeSelector {
     selected_start: Time,
     selected_end: Time,
+    pub(crate) popup: bool,
 }
 impl TimeSelector {
     pub(crate) fn from_strings(start: &str, end: &str) -> Result<Self, &'static str> {
@@ -24,10 +27,7 @@ impl TimeSelector {
         if start_time.is_relative() && end_time.is_relative() {
             return Err("Both start and end time can't be relative");
         }
-        Ok(Self {
-            selected_start: start_time,
-            selected_end: end_time,
-        })
+        Ok(Self { selected_start: start_time, selected_end: end_time, popup: false })
     }
 
     pub(crate) fn to_timestamps(&self) -> (i64, i64) {
@@ -76,6 +76,7 @@ impl Default for TimeSelector {
         Self {
             selected_start: Time::Relative(RelativeUnit::Hours, 1),
             selected_end: Time::Now,
+            popup: false,
         }
     }
 }
@@ -215,11 +216,11 @@ pub(crate) fn draw(
 ) {
     let time_selector_string = app.time_selector.to_string();
     let status_bar = Paragraph::new(time_selector_string.as_str())
-        .style(Style::default())
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("selected time"),
-        );
+        .style(match app.focused {
+            Widget::TimeSelector => Style::default().fg(Color::Yellow),
+            _ => Style::default(),
+        })
+        .block(Block::default().borders(Borders::ALL).title("selected time"));
+    if app.time_selector.popup {}
     frame.render_widget(status_bar, area);
 }

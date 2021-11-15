@@ -29,25 +29,16 @@ impl Display for StatusLevel {
 
 impl Default for StatusMessage {
     fn default() -> Self {
-        Self {
-            text: "".to_string(),
-            level: StatusLevel::Info,
-        }
+        Self { text: "".to_string(), level: StatusLevel::Info }
     }
 }
 
 impl StatusMessage {
     pub(crate) fn info(text: &str) -> Self {
-        Self {
-            text: text.to_string(),
-            level: StatusLevel::Info,
-        }
+        Self { text: text.to_string(), level: StatusLevel::Info }
     }
     pub(crate) fn error(text: &str) -> Self {
-        Self {
-            text: text.to_string(),
-            level: StatusLevel::Error,
-        }
+        Self { text: text.to_string(), level: StatusLevel::Error }
     }
 }
 

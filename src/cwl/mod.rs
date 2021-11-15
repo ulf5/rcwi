@@ -30,10 +30,7 @@ impl Indexable for MyString {
 }
 
 pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
-    let basic_rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
+    let basic_rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
     basic_rt.block_on(async {
         let shared_config = aws_config::load_from_env().await;
         let client = Client::new(&shared_config);
