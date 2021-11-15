@@ -221,6 +221,5 @@ pub(crate) fn draw(
             _ => Style::default(),
         })
         .block(Block::default().borders(Borders::ALL).title("selected time"));
-    if app.time_selector.popup {}
     frame.render_widget(status_bar, area);
 }

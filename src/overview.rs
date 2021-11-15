@@ -2,14 +2,7 @@ use std::{io::Stdout, sync::mpsc::Sender};
 
 use crate::{cwl::AwsReq, status_bar, time_select, Mode, SelectedView, Widget};
 use crossterm::event::KeyCode;
-use tui::{
-    backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
-    style::{Color, Style},
-    text::{Span, Spans},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
-    Frame,
-};
+use tui::{Frame, backend::CrosstermBackend, layout::{Constraint, Direction, Layout, Rect}, style::{Color, Style}, text::{Span, Spans}, widgets::{Block, Borders, Clear, List, ListItem, Paragraph}};
 
 pub(crate) fn draw(
     app: std::sync::MutexGuard<crate::App>,
@@ -43,6 +36,7 @@ pub(crate) fn draw(
     frame.render_widget(log_groups, first_chunk[0]);
 
     time_select::draw(&app, frame, first_chunk[1]);
+
 
     let log_groups = Paragraph::new(app.query.as_str())
         .style(match app.focused {
@@ -79,6 +73,15 @@ pub(crate) fn draw(
             .title("results"),
     );
     frame.render_widget(messages, chunks[2]);
+
+    if app.time_selector.popup {
+        let centered_rect = centered_rect(20, 20, frame.size());
+        let block = Block::default()
+            .style(Style::default().fg(Color::Yellow))
+            .title("Select time").borders(Borders::ALL);
+        frame.render_widget(Clear, centered_rect); //this clears out the background
+        frame.render_widget(block, centered_rect);
+    }
     status_bar::draw(app, frame, chunks[3]);
 }
 
@@ -139,4 +142,30 @@ pub(crate) fn handle_input(
         }
         _ => {}
     }
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_y) / 2),
+                Constraint::Percentage(percent_y),
+                Constraint::Percentage((100 - percent_y) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_x) / 2),
+                Constraint::Percentage(percent_x),
+                Constraint::Percentage((100 - percent_x) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(popup_layout[1])[1]
 }
