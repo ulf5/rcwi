@@ -110,7 +110,7 @@ pub(crate) fn handle_input(
             _ => {}
         },
         KeyCode::Char('j') | KeyCode::Down => match app.focused {
-            Widget::LogGroups => {
+            Widget::LogGroups | Widget::TimeSelector => {
                 app.focused = Widget::Query;
             }
             _ => {
