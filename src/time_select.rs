@@ -5,7 +5,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use time::{Date, OffsetDateTime, PrimitiveDateTime, format_description::{self, well_known::Rfc3339}};
+use time::{
+    format_description::{self, well_known::Rfc3339},
+    Date, OffsetDateTime, PrimitiveDateTime,
+};
 use tui::{
     backend::CrosstermBackend,
     layout::Rect,
@@ -166,7 +169,7 @@ fn to_time(string: &str) -> Result<Time, &'static str> {
                 '-' => {
                     try_specific = true;
                     break;
-                },
+                }
                 _ => return Err("Could not parse relative or specific datetime"),
             }
         }
@@ -176,7 +179,8 @@ fn to_time(string: &str) -> Result<Time, &'static str> {
         if let Ok(datetime) = res {
             return Ok(Time::Specific(datetime));
         }
-        let pattern = format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]").unwrap();
+        let pattern =
+            format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]").unwrap();
         let res = PrimitiveDateTime::parse(&string, &pattern);
         if let Ok(datetime) = res {
             return Ok(Time::Specific(datetime.assume_utc()));

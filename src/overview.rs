@@ -146,6 +146,14 @@ pub(crate) fn handle_input(
                     app.time_selector.selected_end_string.pop();
                 }
             },
+            KeyCode::Tab => match app.time_selector.input {
+                TimeSelectorInput::Start => {
+                    app.time_selector.input = TimeSelectorInput::End;
+                }
+                TimeSelectorInput::End => {
+                    app.time_selector.input = TimeSelectorInput::Start;
+                }
+            },
             KeyCode::Enter => {
                 let new_time_selector = TimeSelector::from_strings(
                     &app.time_selector.selected_start_string,
