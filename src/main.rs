@@ -7,6 +7,7 @@ use crossterm::{
 use editor_input::input_from_editor;
 use flexi_logger::{FileSpec, Logger};
 use indicium::simple::SearchIndex;
+use overview::QueryLogRow;
 use std::sync::{
     mpsc::{Receiver, Sender},
     Arc, Mutex,
@@ -47,7 +48,7 @@ struct App {
     log_group_search_index: SearchIndex<usize>,
     log_group_row: usize,
     query: String,
-    results: Vec<String>,
+    results: Vec<QueryLogRow>,
     log_filter: String,
     mode: Mode,
     break_inner: bool,

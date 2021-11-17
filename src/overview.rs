@@ -63,7 +63,7 @@ pub(crate) fn draw(
         .iter()
         .enumerate()
         .map(|(i, m)| {
-            let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m)))];
+            let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m.message)))];
             ListItem::new(content).style(
                 if app.focused != Widget::LogGroupsResults || app.mode != Mode::Insert {
                     Style::default()
@@ -255,4 +255,11 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
             .as_ref(),
         )
         .split(popup_layout[1])[1]
+}
+
+
+pub(crate) struct QueryLogRow {
+    pub(crate) message: String,
+    pub(crate) timestamp: String,
+    pub(crate) ptr: String,
 }

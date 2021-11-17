@@ -1,13 +1,10 @@
-use std::{
-    sync::{mpsc::Receiver, Arc, Mutex},
-    time::Duration,
-};
+use std::{collections::HashMap, sync::{mpsc::Receiver, Arc, Mutex}, time::Duration};
 
 use aws_sdk_cloudwatchlogs::Client;
 use indicium::simple::{Indexable, SearchIndex};
 use log::{error, info};
 
-use crate::{log_groups::filter_log_groups, status_bar::StatusMessage, App};
+use crate::{App, log_groups::filter_log_groups, overview::QueryLogRow, status_bar::StatusMessage};
 
 pub(crate) enum AwsReq {
     ListLogGroups,
@@ -129,7 +126,14 @@ pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
                                                 info!("query: {:?}", res);
                                                 if let Some(results) = res.results {
                                                     let mut app_ = app.lock().unwrap();
-                                                    app_.results = results.iter().map(|x| x.iter().map(|y| format!("{:?}", y)).collect::<Vec<_>>().join(", ")).collect();
+                                                    app_.results = results.into_iter().map(|x| {
+                                                        let mut map: HashMap<String, String> = x.into_iter().map(|e| (e.field.unwrap(), e.value.unwrap())).collect();
+                                                        QueryLogRow {
+                                                            message: map.remove("@message").unwrap(),
+                                                            timestamp: map.remove("@timestamp").unwrap(),
+                                                            ptr: map.remove("@ptr").unwrap(),
+                                                        }
+                                                    }).collect::<Vec<_>>();
                                                 }
                                             },
                                         }
@@ -137,7 +141,14 @@ pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
                                     }
                                     if let Some(results) = res.results {
                                         let mut app_ = app.lock().unwrap();
-                                        app_.results = results.iter().map(|x| x.iter().map(|y| format!("{:?}", y)).collect::<Vec<_>>().join(", ")).collect();
+                                        app_.results = results.into_iter().map(|x| {
+                                            let mut map: HashMap<String, String> = x.into_iter().map(|e| (e.field.unwrap(), e.value.unwrap())).collect();
+                                            QueryLogRow {
+                                                message: map.remove("@message").unwrap(),
+                                                timestamp: map.remove("@timestamp").unwrap(),
+                                                ptr: map.remove("@ptr").unwrap(),
+                                            }
+                                        }).collect::<Vec<_>>();
                                         app_.status_message = StatusMessage::info("Cloudwatch Insights query completed");
                                     }
                                 }
