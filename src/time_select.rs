@@ -19,6 +19,9 @@ pub(crate) struct TimeSelector {
     selected_start: Time,
     selected_end: Time,
     pub(crate) popup: bool,
+    pub(crate) selected_start_string: String,
+    pub(crate) selected_end_string: String,
+    pub(crate) input: TimeSelectorInput,
 }
 impl TimeSelector {
     pub(crate) fn from_strings(start: &str, end: &str) -> Result<Self, &'static str> {
@@ -27,7 +30,14 @@ impl TimeSelector {
         if start_time.is_relative() && end_time.is_relative() {
             return Err("Both start and end time can't be relative");
         }
-        Ok(Self { selected_start: start_time, selected_end: end_time, popup: false })
+        Ok(Self {
+            selected_start: start_time,
+            selected_end: end_time,
+            popup: false,
+            selected_start_string: start.to_string(),
+            selected_end_string: end.to_string(),
+            input: TimeSelectorInput::Start,
+        })
     }
 
     pub(crate) fn to_timestamps(&self) -> (i64, i64) {
@@ -73,10 +83,15 @@ impl Display for TimeSelector {
 
 impl Default for TimeSelector {
     fn default() -> Self {
+        let default_start = Time::Relative(RelativeUnit::Hours, 1);
+        let default_end = Time::Now;
         Self {
-            selected_start: Time::Relative(RelativeUnit::Hours, 1),
-            selected_end: Time::Now,
+            selected_start_string: default_start.to_string(),
+            selected_end_string: default_end.to_string(),
+            selected_start: default_start,
+            selected_end: default_end,
             popup: false,
+            input: TimeSelectorInput::Start,
         }
     }
 }
@@ -147,7 +162,7 @@ fn to_time(string: &str) -> Result<Time, &'static str> {
                     }
                 }
                 '-' => todo!(),
-                _ => todo!(),
+                _ => return Err("Could not parse relative or specific date"),
             }
         }
     }
@@ -163,6 +178,12 @@ fn to_offset(unit: RelativeUnit, value: u32) -> i64 {
         RelativeUnit::Days => 3600 * 24,
     };
     value as i64 * multiplier
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TimeSelectorInput {
+    Start,
+    End,
 }
 
 #[derive(Clone, Copy)]
