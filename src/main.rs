@@ -1,4 +1,8 @@
-use crossterm::{event::{DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode, poll, read}, execute, terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode}};
+use crossterm::{
+    event::{poll, read, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
 #[allow(dead_code)]
 use editor_input::input_from_editor;
 use flexi_logger::{FileSpec, Logger};
@@ -11,7 +15,7 @@ use std::sync::{
 use std::{error::Error, io::stdout, time::Duration};
 use tui::{backend::CrosstermBackend, Terminal};
 
-use crate::{cwl::AwsReq, status_bar::StatusMessage};
+use crate::{cwl::AwsReq, status_bar::StatusMessage, time_select::TimeSelector};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Widget {
@@ -19,6 +23,7 @@ enum Widget {
     LogGroupsResults,
     Query,
     LogRows,
+    TimeSelector,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -48,6 +53,7 @@ struct App {
     break_inner: bool,
     quit: bool,
     status_message: StatusMessage,
+    time_selector: TimeSelector,
 }
 
 impl Default for App {
@@ -69,6 +75,7 @@ impl Default for App {
             quit: false,
             results: vec![],
             status_message: StatusMessage::default(),
+            time_selector: TimeSelector::default(),
         }
     }
 }
@@ -76,12 +83,11 @@ mod cwl;
 mod log_groups;
 mod overview;
 mod status_bar;
+mod time_select;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let app = Arc::new(Mutex::new(App::default()));
-    Logger::try_with_str("info")?
-        .log_to_file(FileSpec::default().suppress_timestamp())
-        .start()?;
+    Logger::try_with_str("info")?.log_to_file(FileSpec::default().suppress_timestamp()).start()?;
     let (tx, rx): (Sender<AwsReq>, Receiver<AwsReq>) = std::sync::mpsc::channel();
 
     let app_r = app.clone();
@@ -127,11 +133,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
         disable_raw_mode().unwrap();
-        execute!(
-            terminal.backend_mut(),
-            LeaveAlternateScreen,
-            DisableMouseCapture
-        ).unwrap();
+        execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture).unwrap();
         let mut app = app_r.lock().unwrap();
         if app.quit {
             break;

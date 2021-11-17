@@ -30,10 +30,7 @@ impl Indexable for MyString {
 }
 
 pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
-    let basic_rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
+    let basic_rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
     basic_rt.block_on(async {
         let shared_config = aws_config::load_from_env().await;
         let client = Client::new(&shared_config);
@@ -104,18 +101,19 @@ pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
                         }
                     }
                     AwsReq::RunQuery => {
-                        let (log_groups, query_string) = {
+                        let (log_groups, query_string, start, end) = {
                             let mut app_ = app.lock().unwrap();
                             let log_groups = app_.selected_log_groups.clone();
+                            let (start, end) = app_.time_selector.to_timestamps();
                             app_.status_message = StatusMessage::info("Cloudwatch Insights query started");
-                            (log_groups, app_.query.clone())
+                            (log_groups, app_.query.clone(), start, end)
                         };
                         let res = client
                             .start_query()
                             .set_log_group_names(Some(log_groups))
                             .query_string(query_string)
-                            .start_time(0i64)
-                            .end_time(1636811010i64)
+                            .start_time(start)
+                            .end_time(end)
                             .send()
                             .await;
                         match res {
