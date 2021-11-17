@@ -37,7 +37,7 @@ pub(crate) fn draw(
 
     let first_chunk = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(1), Constraint::Length(20)].as_ref())
+        .constraints([Constraint::Min(1), Constraint::Length(50)].as_ref())
         .split(chunks[0]);
     let selected_log_groups_string = app.selected_log_groups.join(", ");
     let log_groups = Paragraph::new(selected_log_groups_string.as_str())
@@ -154,6 +154,7 @@ pub(crate) fn handle_input(
                 if let Ok(new_time_selector) = new_time_selector {
                     app.time_selector = new_time_selector;
                     app.time_selector.popup = false;
+                    app.status_message = StatusMessage::info("New time range selected");
                 } else {
                     app.status_message = StatusMessage::error(new_time_selector.err().unwrap());
                 }

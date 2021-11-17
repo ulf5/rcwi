@@ -981,6 +981,7 @@ dependencies = [
  "flexi_logger",
  "indicium",
  "log",
+ "time",
  "tokio",
  "tui",
  "unicode-width",

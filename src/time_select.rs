@@ -5,6 +5,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use time::{Date, OffsetDateTime, PrimitiveDateTime, format_description::{self, well_known::Rfc3339}};
 use tui::{
     backend::CrosstermBackend,
     layout::Rect,
@@ -43,7 +44,7 @@ impl TimeSelector {
     pub(crate) fn to_timestamps(&self) -> (i64, i64) {
         if let Time::Relative(u, v) = self.selected_start {
             let end = match self.selected_end {
-                Time::Specific(_) => todo!(),
+                Time::Specific(dt) => dt.unix_timestamp(),
                 Time::Now => now(),
                 Time::Relative(_, _) => panic!("can't happen"),
             };
@@ -53,7 +54,7 @@ impl TimeSelector {
         }
         if let Time::Relative(u, v) = self.selected_end {
             let start = match self.selected_start {
-                Time::Specific(_) => todo!(),
+                Time::Specific(dt) => dt.unix_timestamp(),
                 Time::Now => now(),
                 Time::Relative(_, _) => panic!("can't happen"),
             };
@@ -62,12 +63,12 @@ impl TimeSelector {
             return (start, end);
         }
         let start = match self.selected_start {
-            Time::Specific(_) => todo!(),
+            Time::Specific(dt) => dt.unix_timestamp(),
             Time::Now => now(),
             Time::Relative(_, _) => panic!("can't happen"),
         };
         let end = match self.selected_end {
-            Time::Specific(_) => todo!(),
+            Time::Specific(dt) => dt.unix_timestamp(),
             Time::Now => now(),
             Time::Relative(_, _) => panic!("can't happen"),
         };
@@ -108,6 +109,7 @@ fn to_time(string: &str) -> Result<Time, &'static str> {
     }
     let chars = string.chars();
     let mut nums = String::default();
+    let mut try_specific = false;
     for (i, c) in chars.enumerate() {
         if c.is_digit(10) {
             nums.push(c);
@@ -161,10 +163,30 @@ fn to_time(string: &str) -> Result<Time, &'static str> {
                         return Err("Invalid relative suffix");
                     }
                 }
-                '-' => todo!(),
-                _ => return Err("Could not parse relative or specific date"),
+                '-' => {
+                    try_specific = true;
+                    break;
+                },
+                _ => return Err("Could not parse relative or specific datetime"),
             }
         }
+    }
+    if try_specific {
+        let res = OffsetDateTime::parse(&string, &Rfc3339);
+        if let Ok(datetime) = res {
+            return Ok(Time::Specific(datetime));
+        }
+        let pattern = format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]").unwrap();
+        let res = PrimitiveDateTime::parse(&string, &pattern);
+        if let Ok(datetime) = res {
+            return Ok(Time::Specific(datetime.assume_utc()));
+        }
+        let pattern = format_description::parse("[year]-[month]-[day]").unwrap();
+        let res = Date::parse(&string, &pattern);
+        if let Ok(date) = res {
+            return Ok(Time::Specific(date.midnight().assume_utc()));
+        }
+        return Err("Could not parse specific datetime");
     }
 
     Err("Something wrong")
@@ -206,7 +228,7 @@ impl Display for RelativeUnit {
 }
 enum Time {
     Relative(RelativeUnit, u32),
-    Specific(i64),
+    Specific(OffsetDateTime),
     Now,
 }
 
@@ -224,7 +246,7 @@ impl Display for Time {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Time::Relative(u, v) => f.write_str(&format!("{}{}", v, u)),
-            Time::Specific(_) => todo!(),
+            Time::Specific(dt) => f.write_str(&dt.format(&Rfc3339).unwrap()),
             Time::Now => f.write_str("now"),
         }
     }
