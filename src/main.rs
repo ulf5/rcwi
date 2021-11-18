@@ -112,18 +112,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             if poll(Duration::from_millis(50)).unwrap() {
                 let event = read().unwrap();
-                let mut app = app_r.lock().unwrap();
-                if let CEvent::Key(key_code) = event {
-                    match key_code.code {
-                        KeyCode::Char('q') if app.mode == Mode::Normal => {
-                            app.quit = true;
-                            break;
-                        }
-                        k => {
-                            match app.selected {
-                                SelectedView::LogGroups => log_groups::handle_input(app, k, &tx),
-                                SelectedView::Overview => overview::handle_input(app, k, &tx),
-                            };
+                {
+                    let mut app = app_r.lock().unwrap();
+                    if let CEvent::Key(key_code) = event {
+                        match key_code.code {
+                            KeyCode::Char('q') if app.mode == Mode::Normal => {
+                                app.quit = true;
+                                break;
+                            }
+                            k => {
+                                match app.selected {
+                                    SelectedView::LogGroups => log_groups::handle_input(app, k, &tx),
+                                    SelectedView::Overview => overview::handle_input(app, k, &tx),
+                                };
+                            }
                         }
                     }
                 }
