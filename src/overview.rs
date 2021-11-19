@@ -78,7 +78,7 @@ pub(crate) fn draw(
     let messages = List::new(messages).block(
         Block::default()
             .style(match app.focused {
-                Widget::LogGroupsResults => Style::default().fg(Color::Yellow),
+                Widget::LogRows => Style::default().fg(Color::Yellow),
                 _ => Style::default(),
             })
             .borders(Borders::ALL)
@@ -202,12 +202,24 @@ pub(crate) fn handle_input(
                 Widget::LogGroups | Widget::TimeSelector => {
                     app.focused = Widget::Query;
                 }
+                Widget::Query => {
+                    app.focused = Widget::LogRows;
+                }
                 _ => {
                     app.focused = Widget::LogGroups;
                 }
             },
             KeyCode::Char('k') | KeyCode::Up => match app.focused {
                 Widget::LogGroups => {
+                    app.focused = Widget::LogRows;
+                }
+                Widget::Query => {
+                    app.focused = Widget::LogGroups;
+                }
+                Widget::TimeSelector => {
+                    app.focused = Widget::LogRows;
+                }
+                Widget::LogRows => {
                     app.focused = Widget::Query;
                 }
                 _ => {
