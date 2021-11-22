@@ -76,12 +76,13 @@ pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
 
                                     {
                                         let mut app_ = app.lock().unwrap();
+                                        let num_log_groups = app_.log_groups.len();
                                         names
                                             .iter()
                                             .map(|x| MyString::from(x.as_str()))
                                             .enumerate()
                                             .for_each(|(index, element)| {
-                                                app_.log_group_search_index.insert(&index, &element)
+                                                app_.log_group_search_index.insert(&(num_log_groups + index), &element)
                                             });
                                         app_.log_groups.extend(names);
                                         filter_log_groups(&mut app_);
