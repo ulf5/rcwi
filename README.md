@@ -10,7 +10,14 @@ Very simple and incomplete TUI for CloudWatch Insights made in Rust.
 - Run the query.
 
 Uses the default credential chain for AWS credentials.  
-So to change region from your config's default you can run rcwi with AWS_REGION set to something else.
+So to change region from your config's default you can run `rcwi` with `AWS_REGION` set to something else.
+
+### Installation
+
+Requires Rust, can be installed from [here](https://rustup.rs/)
+
+- Clone repository
+- in directory run `cargo install --path .`
 
 ### Controls
 
