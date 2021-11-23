@@ -5,9 +5,12 @@
 Very simple and incomplete TUI for CloudWatch Insights made in Rust.
 
 - First select which log groups you want to search in.
-- Edit your query (respects $EDITOR).
+- Edit your query (respects `$EDITOR`).
 - Edit time range.
 - Run the query.
+
+Uses the default credential chain for AWS credentials.  
+So to change region from your config's default you can run rcwi with AWS_REGION set to something else.
 
 ### Controls
 
