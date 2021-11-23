@@ -11,11 +11,11 @@ Very simple and incomplete TUI for CloudWatch Insights made in Rust.
 
 ### Controls
 
-`q` to quit.
-`hjkl/Arrows` control focus
-`Enter` to select
-`Escape` to go back
-`r` runs the query
+`q` to quit.  
+`hjkl/Arrows` control focus  
+`Enter` to select  
+`Escape` to go back  
+`r` runs the query  
 
 
 ### Limitations
