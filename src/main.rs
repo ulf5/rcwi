@@ -101,7 +101,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 })
                 .unwrap();
 
-            if poll(Duration::from_millis(50)).unwrap() {
+            if poll(Duration::from_millis(250)).unwrap() {
                 let event = read().unwrap();
                 {
                     let mut app = app_r.lock().unwrap();
