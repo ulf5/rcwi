@@ -25,6 +25,7 @@ enum Widget {
     Query,
     LogRows,
     TimeSelector,
+    Controls,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -85,6 +86,7 @@ mod log_groups;
 mod overview;
 mod status_bar;
 mod time_select;
+mod controls_bar;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let app = Arc::new(Mutex::new(App::default()));
