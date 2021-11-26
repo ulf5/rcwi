@@ -15,6 +15,7 @@ pub(crate) fn draw(frame: &mut Frame<CrosstermBackend<io::Stdout>>, area: Rect) 
         "Enter (select)",
         "Escape (go back)",
         "r (run the query)",
+        "y (yank row to clipboard)",
     ];
     let controls_bar = Paragraph::new(controls.join(" | "))
         .style(Style::default())
