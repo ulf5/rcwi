@@ -19,14 +19,6 @@ Requires Rust, can be installed from [here](https://rustup.rs/)
 - Clone repository
 - in directory run `cargo install --path .`
 
-### Controls
-
-`q` to quit.  
-`hjkl/Arrows` control focus  
-`Enter` to select  
-`Escape` to go back  
-`r` runs the query  
-
 
 ### Limitations
 
