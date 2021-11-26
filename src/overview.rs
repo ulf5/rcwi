@@ -3,6 +3,7 @@ use std::{io::Stdout, sync::mpsc::Sender};
 use crate::{
     cwl::AwsReq,
     status_bar::{self, StatusMessage},
+    controls_bar::{self},
     time_select::{self, TimeSelector, TimeSelectorInput},
     Mode, SelectedView, Widget,
 };
@@ -30,6 +31,7 @@ pub(crate) fn draw(
                 Constraint::Length(9),
                 Constraint::Min(1),
                 Constraint::Length(3),
+                Constraint::Length(2),
             ]
             .as_ref(),
         )
@@ -129,6 +131,8 @@ pub(crate) fn draw(
         }
     }
     status_bar::draw(app, frame, chunks[3]);
+
+    controls_bar::draw(frame, chunks[4]);
 }
 
 pub(crate) fn handle_input(
