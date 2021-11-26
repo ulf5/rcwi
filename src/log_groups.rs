@@ -102,6 +102,7 @@ pub(crate) fn handle_input(
         Mode::Normal => match key_code {
             KeyCode::Esc => {
                 app.selected = SelectedView::Overview;
+                app.focused = Widget::LogGroups;
             }
             KeyCode::Enter => {
                 if app.log_groups.log_groups.is_empty() {

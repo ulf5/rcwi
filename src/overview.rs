@@ -7,7 +7,9 @@ use crate::{
     time_select::{self, TimeSelector, TimeSelectorInput},
     Mode, SelectedView, Widget,
 };
+use arboard::Clipboard;
 use crossterm::event::KeyCode;
+use log::error;
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Rect},
@@ -269,6 +271,28 @@ pub(crate) fn handle_input(
                         } else {
                             0
                         };
+                    }
+                    KeyCode::Char('y') => {
+                        if app.log_results.query_results.len() < 1 {
+                            return;
+                        }
+                        let content = &app.log_results.query_results
+                            [app.log_results.query_result_selected]
+                            .message;
+                        let cb = Clipboard::new();
+                        if let Ok(mut cb) = cb {
+                            let res = cb.set_text(content.clone());
+                            if let Err(err) = res {
+                                error!("Clipboard action failed: {:?}", err);
+                                app.status_message =
+                                    StatusMessage::error("Clipboard action failed.");
+                            } else {
+                                app.status_message = StatusMessage::info("Yanked to clipboard.");
+                            }
+                        } else if let Err(err) = cb {
+                            error!("Clipboard action failed: {:?}", err);
+                            app.status_message = StatusMessage::error("Clipboard action failed.");
+                        }
                     }
                     _ => {}
                 },
