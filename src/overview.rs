@@ -62,12 +62,20 @@ pub(crate) fn draw(
         .block(Block::default().borders(Borders::ALL).title("query"));
     frame.render_widget(log_groups, chunks[1]);
 
-    let messages: Vec<ListItem> = app
-        .log_results
-        .query_results
+    let logs_size = (chunks[2].height - 2) as usize; //what if screen is too small?
+    let scroll_select = app.log_results.query_result_selected + 5;
+    let res_len = app.log_results.query_results.len();
+    let scroll_bounds = if res_len > logs_size { res_len - logs_size } else { 0 };
+    let (win_start, win_end) = if scroll_select <= logs_size {
+        (0usize, logs_size.min(res_len))
+    } else {
+        ((scroll_select - (logs_size)).min(scroll_bounds), scroll_select.min(res_len))
+    };
+    let messages: Vec<ListItem> = app.log_results.query_results[win_start..win_end]
         .iter()
         .enumerate()
         .map(|(i, m)| {
+            let i = i + win_start;
             let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m.message)))];
             ListItem::new(content).style(
                 if app.focused == Widget::LogRows
@@ -257,9 +265,12 @@ pub(crate) fn handle_input(
                         app.mode = Mode::Normal;
                     }
                     KeyCode::Char('j') | KeyCode::Down => {
-                        app.log_results.query_result_selected =
-                            (app.log_results.query_result_selected + 1)
-                                % app.log_results.query_results.len();
+                        let len = app.log_results.query_results.len();
+                        app.log_results.query_result_selected = if len > 0 {
+                            (app.log_results.query_result_selected + 1) % len
+                        } else {
+                            0
+                        };
                     }
                     KeyCode::Char('k') | KeyCode::Up => {
                         let l = app.log_results.query_results.len();

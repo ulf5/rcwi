@@ -151,8 +151,9 @@ pub(crate) fn handle_input(
                     app.mode = Mode::Normal;
                 }
                 KeyCode::Char('j') | KeyCode::Down => {
-                    app.log_groups.log_group_row = (app.log_groups.log_group_row + 1)
-                        % app.log_groups.filtered_log_groups.len();
+                    let len = app.log_groups.filtered_log_groups.len();
+                    app.log_groups.log_group_row =
+                        if len > 0 { (app.log_groups.log_group_row + 1) % len } else { 0 };
                 }
                 KeyCode::Char('k') | KeyCode::Up => {
                     let l = app.log_groups.filtered_log_groups.len();
