@@ -3,9 +3,9 @@ use std::{io::Stdout, sync::mpsc::Sender};
 use crate::{
     cwl::AwsReq,
     status_bar::{self, StatusMessage},
-    controls_bar::{self},
+    controls_bar,
     time_select::{self, TimeSelector, TimeSelectorInput},
-    Mode, SelectedView, Widget,
+    SelectedView, Widget,
 };
 use crossterm::event::KeyCode;
 use tui::{
@@ -41,7 +41,7 @@ pub(crate) fn draw(
         .direction(Direction::Horizontal)
         .constraints([Constraint::Min(1), Constraint::Length(50)].as_ref())
         .split(chunks[0]);
-    let selected_log_groups_string = app.selected_log_groups.join(", ");
+    let selected_log_groups_string = app.log_groups.selected_log_groups.join(", ");
     let log_groups = Paragraph::new(selected_log_groups_string.as_str())
         .style(match app.focused {
             Widget::LogGroups => Style::default().fg(Color::Yellow),
@@ -66,15 +66,7 @@ pub(crate) fn draw(
         .enumerate()
         .map(|(i, m)| {
             let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m.message)))];
-            ListItem::new(content).style(
-                if app.focused != Widget::LogGroupsResults || app.mode != Mode::Insert {
-                    Style::default()
-                } else if i == app.log_group_row {
-                    Style::default().fg(Color::Red)
-                } else {
-                    Style::default()
-                },
-            )
+            ListItem::new(content).style(Style::default())
         })
         .collect();
     let messages = List::new(messages).block(
@@ -185,7 +177,7 @@ pub(crate) fn handle_input(
                 Widget::LogGroups => {
                     app.selected = SelectedView::LogGroups;
                     app.focused = Widget::LogGroups;
-                    if app.log_groups.is_empty() {
+                    if app.log_groups.log_groups.is_empty() {
                         cwl.send(AwsReq::ListLogGroups).unwrap();
                     }
                 }

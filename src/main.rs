@@ -3,10 +3,9 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-#[allow(dead_code)]
 use editor_input::input_from_editor;
 use flexi_logger::{FileSpec, Logger};
-use indicium::simple::SearchIndex;
+use log_groups::LogGroups;
 use overview::QueryLogRow;
 use std::sync::{
     mpsc::{Receiver, Sender},
@@ -25,7 +24,6 @@ enum Widget {
     Query,
     LogRows,
     TimeSelector,
-    Controls,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -43,17 +41,12 @@ enum Mode {
 struct App {
     selected: SelectedView,
     focused: Widget,
-    log_groups: Vec<String>,
-    filtered_log_groups: Vec<usize>,
-    selected_log_groups: Vec<String>,
-    log_group_search_index: SearchIndex<usize>,
-    log_group_row: usize,
-    query: String,
-    results: Vec<QueryLogRow>,
-    log_filter: String,
     mode: Mode,
+    log_groups: LogGroups,
     break_inner: bool,
     quit: bool,
+    query: String,
+    results: Vec<QueryLogRow>,
     status_message: StatusMessage,
     time_selector: TimeSelector,
 }
@@ -63,20 +56,15 @@ impl Default for App {
         App {
             selected: SelectedView::Overview,
             focused: Widget::LogGroups,
-            log_groups: vec![],
-            filtered_log_groups: vec![],
-            selected_log_groups: vec![],
-            log_group_search_index: SearchIndex::default(),
-            log_group_row: 0usize,
+            mode: Mode::Normal,
+            break_inner: false,
             query: "fields @timestamp, @message\n\
         | sort @timestamp desc\n"
                 .to_string(),
-            log_filter: "".to_string(),
-            mode: Mode::Normal,
-            break_inner: false,
             quit: false,
             results: vec![],
             status_message: StatusMessage::default(),
+            log_groups: LogGroups::default(),
             time_selector: TimeSelector::default(),
         }
     }

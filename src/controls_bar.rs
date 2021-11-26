@@ -4,7 +4,7 @@ use tui::{
     backend::CrosstermBackend,
     layout::Rect,
     style::{Style},
-    widgets::{Block, Borders, Paragraph, BorderType},
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
 

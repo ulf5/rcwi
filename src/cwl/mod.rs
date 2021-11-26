@@ -46,15 +46,15 @@ pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
                                         .map(|z| z.log_group_name.as_ref().unwrap().clone())
                                         .collect();
                                     let mut app_ = app.lock().unwrap();
-                                    app_.log_group_search_index = SearchIndex::default();
+                                    app_.log_groups.log_group_search_index = SearchIndex::default();
                                     names
                                         .iter()
                                         .map(|x| MyString::from(x.as_str()))
                                         .enumerate()
                                         .for_each(|(index, element)| {
-                                            app_.log_group_search_index.insert(&index, &element)
+                                            app_.log_groups.log_group_search_index.insert(&index, &element)
                                         });
-                                    app_.log_groups = names;
+                                    app_.log_groups.log_groups = names;
                                     filter_log_groups(&mut app_);
                                 }
                                 loop {
@@ -76,15 +76,15 @@ pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
 
                                     {
                                         let mut app_ = app.lock().unwrap();
-                                        let num_log_groups = app_.log_groups.len();
+                                        let num_log_groups = app_.log_groups.log_groups.len();
                                         names
                                             .iter()
                                             .map(|x| MyString::from(x.as_str()))
                                             .enumerate()
                                             .for_each(|(index, element)| {
-                                                app_.log_group_search_index.insert(&(num_log_groups + index), &element)
+                                                app_.log_groups.log_group_search_index.insert(&(num_log_groups + index), &element)
                                             });
-                                        app_.log_groups.extend(names);
+                                        app_.log_groups.log_groups.extend(names);
                                         filter_log_groups(&mut app_);
                                     }
                                 }
@@ -101,7 +101,7 @@ pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
                     AwsReq::RunQuery => {
                         let (log_groups, query_string, start, end) = {
                             let mut app_ = app.lock().unwrap();
-                            let log_groups = app_.selected_log_groups.clone();
+                            let log_groups = app_.log_groups.selected_log_groups.clone();
                             let (start, end) = app_.time_selector.to_timestamps();
                             app_.status_message = StatusMessage::info("Cloudwatch Insights query started");
                             (log_groups, app_.query.clone(), start, end)

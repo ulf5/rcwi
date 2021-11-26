@@ -2,6 +2,7 @@ use std::{io::Stdout, sync::mpsc::Sender};
 
 use crate::{cwl::AwsReq, status_bar, Mode, SelectedView, Widget};
 use crossterm::event::KeyCode;
+use indicium::simple::SearchIndex;
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -11,6 +12,28 @@ use tui::{
     Frame,
 };
 use unicode_width::UnicodeWidthStr;
+
+pub(crate) struct LogGroups {
+    pub(crate) log_groups: Vec<String>,
+    filtered_log_groups: Vec<usize>,
+    pub(crate) selected_log_groups: Vec<String>,
+    pub(crate) log_group_search_index: SearchIndex<usize>,
+    log_group_row: usize,
+    log_filter: String,
+}
+
+impl Default for LogGroups {
+    fn default() -> Self {
+        Self {
+            log_groups: vec![],
+            filtered_log_groups: vec![],
+            selected_log_groups: vec![],
+            log_group_search_index: SearchIndex::default(),
+            log_group_row: 0usize,
+            log_filter: "".to_string(),
+        }
+    }
+}
 
 pub(crate) fn draw(
     app: std::sync::MutexGuard<crate::App>,
@@ -22,7 +45,7 @@ pub(crate) fn draw(
         .constraints([Constraint::Length(3), Constraint::Min(1), Constraint::Length(3)].as_ref())
         .split(frame.size());
 
-    let input = Paragraph::new(app.log_filter.as_str())
+    let input = Paragraph::new(app.log_groups.log_filter.as_str())
         .style(match app.focused {
             Widget::LogGroups => Style::default().fg(Color::Yellow),
             _ => Style::default(),
@@ -30,23 +53,23 @@ pub(crate) fn draw(
         .block(Block::default().borders(Borders::ALL).title("filter log groups"));
     frame.render_widget(input, chunks[0]);
     if app.mode == Mode::Insert && app.focused == Widget::LogGroups {
-        frame.set_cursor(chunks[0].x + app.log_filter.width() as u16 + 1, chunks[0].y + 1)
+        frame.set_cursor(chunks[0].x + app.log_groups.log_filter.width() as u16 + 1, chunks[0].y + 1)
     }
 
     let messages: Vec<ListItem> = app
-        .log_groups
+        .log_groups.log_groups
         .iter()
         .enumerate()
-        .filter(|(i, _e)| app.filtered_log_groups.contains(i))
+        .filter(|(i, _e)| app.log_groups.filtered_log_groups.contains(i))
         .map(|(_i, x)| x)
         .enumerate()
         .map(|(i, m)| {
-            let marker = if app.selected_log_groups.contains(m) { '*' } else { ' ' };
+            let marker = if app.log_groups.selected_log_groups.contains(m) { '*' } else { ' ' };
             let content = vec![Spans::from(Span::raw(format!("[{}] {}: {}", marker, i, m)))];
             ListItem::new(content).style(
                 if app.focused != Widget::LogGroupsResults || app.mode != Mode::Insert {
                     Style::default()
-                } else if i == app.log_group_row {
+                } else if i == app.log_groups.log_group_row {
                     Style::default().fg(Color::Red)
                 } else {
                     Style::default()
@@ -79,7 +102,7 @@ pub(crate) fn handle_input(
                 app.selected = SelectedView::Overview;
             }
             KeyCode::Enter => {
-                if app.log_groups.is_empty() {
+                if app.log_groups.log_groups.is_empty() {
                     cwl.send(AwsReq::ListLogGroups).unwrap();
                 }
                 app.mode = Mode::Insert;
@@ -111,11 +134,11 @@ pub(crate) fn handle_input(
                     app.focused = Widget::LogGroupsResults;
                 }
                 KeyCode::Char(c) => {
-                    app.log_filter.push(c);
+                    app.log_groups.log_filter.push(c);
                     filter_log_groups(&mut app);
                 }
                 KeyCode::Backspace => {
-                    app.log_filter.pop();
+                    app.log_groups.log_filter.pop();
                     filter_log_groups(&mut app);
                 }
                 _ => {}
@@ -125,12 +148,12 @@ pub(crate) fn handle_input(
                     app.mode = Mode::Normal;
                 }
                 KeyCode::Char('j') | KeyCode::Down => {
-                    app.log_group_row = (app.log_group_row + 1) % app.filtered_log_groups.len();
+                    app.log_groups.log_group_row = (app.log_groups.log_group_row + 1) % app.log_groups.filtered_log_groups.len();
                 }
                 KeyCode::Char('k') | KeyCode::Up => {
-                    let l = app.filtered_log_groups.len();
-                    let r = app.log_group_row;
-                    app.log_group_row = if r > 0 && l > 0 {
+                    let l = app.log_groups.filtered_log_groups.len();
+                    let r = app.log_groups.log_group_row;
+                    app.log_groups.log_group_row = if r > 0 && l > 0 {
                         (r - 1) % l
                     } else if r == 0 && l > 0 {
                         l - 1
@@ -139,11 +162,11 @@ pub(crate) fn handle_input(
                     };
                 }
                 KeyCode::Enter => {
-                    let value = app.log_groups[app.filtered_log_groups[app.log_group_row]].clone();
-                    let num_selected_before = app.selected_log_groups.len();
-                    app.selected_log_groups.retain(|x| x != &value);
-                    if num_selected_before == app.selected_log_groups.len() {
-                        app.selected_log_groups.push(value);
+                    let value = app.log_groups.log_groups[app.log_groups.filtered_log_groups[app.log_groups.log_group_row]].clone();
+                    let num_selected_before = app.log_groups.selected_log_groups.len();
+                    app.log_groups.selected_log_groups.retain(|x| x != &value);
+                    if num_selected_before == app.log_groups.selected_log_groups.len() {
+                        app.log_groups.selected_log_groups.push(value);
                     }
                 }
                 _ => {}
@@ -154,9 +177,9 @@ pub(crate) fn handle_input(
 }
 
 pub(crate) fn filter_log_groups(app: &mut std::sync::MutexGuard<crate::App>) {
-    let res = app.log_group_search_index.search(&app.log_filter);
-    app.filtered_log_groups = app
-        .log_groups
+    let res = app.log_groups.log_group_search_index.search(&app.log_groups.log_filter);
+    app.log_groups.filtered_log_groups = app
+        .log_groups.log_groups
         .iter()
         .enumerate()
         .filter(|(i, _x)| res.is_empty() || res.contains(&i))
