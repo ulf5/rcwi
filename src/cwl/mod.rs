@@ -1,10 +1,14 @@
-use std::{collections::HashMap, sync::{mpsc::Receiver, Arc, Mutex}, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::{mpsc::Receiver, Arc, Mutex},
+    time::Duration,
+};
 
 use aws_sdk_cloudwatchlogs::Client;
 use indicium::simple::{Indexable, SearchIndex};
 use log::{error, info};
 
-use crate::{App, log_groups::filter_log_groups, overview::QueryLogRow, status_bar::StatusMessage};
+use crate::{log_groups::filter_log_groups, overview::QueryLogRow, status_bar::StatusMessage, App};
 
 pub(crate) enum AwsReq {
     ListLogGroups,
@@ -127,7 +131,7 @@ pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
                                                 info!("query: {:?}", res);
                                                 if let Some(results) = res.results {
                                                     let mut app_ = app.lock().unwrap();
-                                                    app_.results = results.into_iter().map(|x| {
+                                                    app_.log_results.query_results = results.into_iter().map(|x| {
                                                         let mut map: HashMap<String, String> = x.into_iter().map(|e| (e.field.unwrap(), e.value.unwrap())).collect();
                                                         QueryLogRow {
                                                             message: map.remove("@message").unwrap(),
@@ -142,7 +146,7 @@ pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
                                     }
                                     if let Some(results) = res.results {
                                         let mut app_ = app.lock().unwrap();
-                                        app_.results = results.into_iter().map(|x| {
+                                        app_.log_results.query_results = results.into_iter().map(|x| {
                                             let mut map: HashMap<String, String> = x.into_iter().map(|e| (e.field.unwrap(), e.value.unwrap())).collect();
                                             QueryLogRow {
                                                 message: map.remove("@message").unwrap(),

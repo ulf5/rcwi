@@ -6,7 +6,7 @@ use crossterm::{
 use editor_input::input_from_editor;
 use flexi_logger::{FileSpec, Logger};
 use log_groups::LogGroups;
-use overview::QueryLogRow;
+use overview::LogResults;
 use std::sync::{
     mpsc::{Receiver, Sender},
     Arc, Mutex,
@@ -46,7 +46,7 @@ struct App {
     break_inner: bool,
     quit: bool,
     query: String,
-    results: Vec<QueryLogRow>,
+    log_results: LogResults,
     status_message: StatusMessage,
     time_selector: TimeSelector,
 }
@@ -62,24 +62,26 @@ impl Default for App {
         | sort @timestamp desc\n"
                 .to_string(),
             quit: false,
-            results: vec![],
+            log_results: LogResults::default(),
             status_message: StatusMessage::default(),
             log_groups: LogGroups::default(),
             time_selector: TimeSelector::default(),
         }
     }
 }
+mod controls_bar;
 mod cwl;
 mod log_groups;
 mod overview;
 mod status_bar;
 mod time_select;
-mod controls_bar;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let app = Arc::new(Mutex::new(App::default()));
     let log_dir = home::home_dir().expect("user missing home dir").join(".rcwi");
-    Logger::try_with_str("info")?.log_to_file(FileSpec::default().directory(log_dir).suppress_timestamp()).start()?;
+    Logger::try_with_str("info")?
+        .log_to_file(FileSpec::default().directory(log_dir).suppress_timestamp())
+        .start()?;
     let (tx, rx): (Sender<AwsReq>, Receiver<AwsReq>) = std::sync::mpsc::channel();
 
     let app_r = app.clone();
@@ -113,7 +115,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                             }
                             k => {
                                 match app.selected {
-                                    SelectedView::LogGroups => log_groups::handle_input(app, k, &tx),
+                                    SelectedView::LogGroups => {
+                                        log_groups::handle_input(app, k, &tx)
+                                    }
                                     SelectedView::Overview => overview::handle_input(app, k, &tx),
                                 };
                             }

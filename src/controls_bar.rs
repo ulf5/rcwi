@@ -1,17 +1,14 @@
-use std::{io};
+use std::io;
 
 use tui::{
     backend::CrosstermBackend,
     layout::Rect,
-    style::{Style},
+    style::Style,
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
 
-pub(crate) fn draw(
-    frame: &mut Frame<CrosstermBackend<io::Stdout>>,
-    area: Rect,
-) {
+pub(crate) fn draw(frame: &mut Frame<CrosstermBackend<io::Stdout>>, area: Rect) {
     let controls = vec![
         "q (quit)",
         "hjkl/Arrows (control focus)",
@@ -21,9 +18,7 @@ pub(crate) fn draw(
     ];
     let controls_bar = Paragraph::new(controls.join(" | "))
         .style(Style::default())
-        .block(Block::default()
-            .borders(Borders::NONE)
-            .title("controls"));
+        .block(Block::default().borders(Borders::NONE).title("controls"));
 
     frame.render_widget(controls_bar, area);
 }

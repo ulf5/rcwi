@@ -53,11 +53,13 @@ pub(crate) fn draw(
         .block(Block::default().borders(Borders::ALL).title("filter log groups"));
     frame.render_widget(input, chunks[0]);
     if app.mode == Mode::Insert && app.focused == Widget::LogGroups {
-        frame.set_cursor(chunks[0].x + app.log_groups.log_filter.width() as u16 + 1, chunks[0].y + 1)
+        frame
+            .set_cursor(chunks[0].x + app.log_groups.log_filter.width() as u16 + 1, chunks[0].y + 1)
     }
 
     let messages: Vec<ListItem> = app
-        .log_groups.log_groups
+        .log_groups
+        .log_groups
         .iter()
         .enumerate()
         .filter(|(i, _e)| app.log_groups.filtered_log_groups.contains(i))
@@ -148,7 +150,8 @@ pub(crate) fn handle_input(
                     app.mode = Mode::Normal;
                 }
                 KeyCode::Char('j') | KeyCode::Down => {
-                    app.log_groups.log_group_row = (app.log_groups.log_group_row + 1) % app.log_groups.filtered_log_groups.len();
+                    app.log_groups.log_group_row = (app.log_groups.log_group_row + 1)
+                        % app.log_groups.filtered_log_groups.len();
                 }
                 KeyCode::Char('k') | KeyCode::Up => {
                     let l = app.log_groups.filtered_log_groups.len();
@@ -162,7 +165,9 @@ pub(crate) fn handle_input(
                     };
                 }
                 KeyCode::Enter => {
-                    let value = app.log_groups.log_groups[app.log_groups.filtered_log_groups[app.log_groups.log_group_row]].clone();
+                    let value = app.log_groups.log_groups
+                        [app.log_groups.filtered_log_groups[app.log_groups.log_group_row]]
+                        .clone();
                     let num_selected_before = app.log_groups.selected_log_groups.len();
                     app.log_groups.selected_log_groups.retain(|x| x != &value);
                     if num_selected_before == app.log_groups.selected_log_groups.len() {
@@ -179,7 +184,8 @@ pub(crate) fn handle_input(
 pub(crate) fn filter_log_groups(app: &mut std::sync::MutexGuard<crate::App>) {
     let res = app.log_groups.log_group_search_index.search(&app.log_groups.log_filter);
     app.log_groups.filtered_log_groups = app
-        .log_groups.log_groups
+        .log_groups
+        .log_groups
         .iter()
         .enumerate()
         .filter(|(i, _x)| res.is_empty() || res.contains(&i))

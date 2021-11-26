@@ -1,11 +1,11 @@
 use std::{io::Stdout, sync::mpsc::Sender};
 
 use crate::{
+    controls_bar,
     cwl::AwsReq,
     status_bar::{self, StatusMessage},
-    controls_bar,
     time_select::{self, TimeSelector, TimeSelectorInput},
-    SelectedView, Widget,
+    Mode, SelectedView, Widget,
 };
 use crossterm::event::KeyCode;
 use tui::{
@@ -61,12 +61,22 @@ pub(crate) fn draw(
     frame.render_widget(log_groups, chunks[1]);
 
     let messages: Vec<ListItem> = app
-        .results
+        .log_results
+        .query_results
         .iter()
         .enumerate()
         .map(|(i, m)| {
             let content = vec![Spans::from(Span::raw(format!("{}: {}", i, m.message)))];
-            ListItem::new(content).style(Style::default())
+            ListItem::new(content).style(
+                if app.focused == Widget::LogRows
+                    && app.mode == Mode::Insert
+                    && app.log_results.query_result_selected == i
+                {
+                    Style::default().fg(Color::Red)
+                } else {
+                    Style::default()
+                },
+            )
         })
         .collect();
     let messages = List::new(messages).block(
@@ -172,69 +182,98 @@ pub(crate) fn handle_input(
             },
             _ => {}
         },
-        false => match key_code {
-            KeyCode::Enter => match app.focused {
-                Widget::LogGroups => {
-                    app.selected = SelectedView::LogGroups;
-                    app.focused = Widget::LogGroups;
-                    if app.log_groups.log_groups.is_empty() {
-                        cwl.send(AwsReq::ListLogGroups).unwrap();
+        false => match app.mode {
+            Mode::Normal => match key_code {
+                KeyCode::Enter => match app.focused {
+                    Widget::LogGroups => {
+                        app.selected = SelectedView::LogGroups;
+                        app.focused = Widget::LogGroups;
+                        if app.log_groups.log_groups.is_empty() {
+                            cwl.send(AwsReq::ListLogGroups).unwrap();
+                        }
                     }
+                    Widget::Query => app.break_inner = true,
+                    Widget::TimeSelector => app.time_selector.popup = true,
+                    Widget::LogRows => app.mode = Mode::Insert,
+                    _ => {}
+                },
+                KeyCode::Char('h') | KeyCode::Left => match app.focused {
+                    Widget::LogGroups => {
+                        app.focused = Widget::TimeSelector;
+                    }
+                    Widget::TimeSelector => {
+                        app.focused = Widget::LogGroups;
+                    }
+                    _ => {}
+                },
+                KeyCode::Char('j') | KeyCode::Down => match app.focused {
+                    Widget::LogGroups | Widget::TimeSelector => {
+                        app.focused = Widget::Query;
+                    }
+                    Widget::Query => {
+                        app.focused = Widget::LogRows;
+                    }
+                    _ => {
+                        app.focused = Widget::LogGroups;
+                    }
+                },
+                KeyCode::Char('k') | KeyCode::Up => match app.focused {
+                    Widget::LogGroups => {
+                        app.focused = Widget::LogRows;
+                    }
+                    Widget::Query => {
+                        app.focused = Widget::LogGroups;
+                    }
+                    Widget::TimeSelector => {
+                        app.focused = Widget::LogRows;
+                    }
+                    Widget::LogRows => {
+                        app.focused = Widget::Query;
+                    }
+                    _ => {
+                        app.focused = Widget::LogGroups;
+                    }
+                },
+                KeyCode::Char('l') | KeyCode::Right => match app.focused {
+                    Widget::LogGroups => {
+                        app.focused = Widget::TimeSelector;
+                    }
+                    Widget::TimeSelector => {
+                        app.focused = Widget::LogGroups;
+                    }
+                    _ => {}
+                },
+                KeyCode::Char('r') => {
+                    cwl.send(AwsReq::RunQuery).unwrap();
                 }
-                Widget::Query => app.break_inner = true,
-                Widget::TimeSelector => app.time_selector.popup = true,
+
                 _ => {}
             },
-            KeyCode::Char('h') | KeyCode::Left => match app.focused {
-                Widget::LogGroups => {
-                    app.focused = Widget::TimeSelector;
-                }
-                Widget::TimeSelector => {
-                    app.focused = Widget::LogGroups;
-                }
+            Mode::Insert => match app.focused {
+                Widget::LogRows => match key_code {
+                    KeyCode::Esc => {
+                        app.mode = Mode::Normal;
+                    }
+                    KeyCode::Char('j') | KeyCode::Down => {
+                        app.log_results.query_result_selected =
+                            (app.log_results.query_result_selected + 1)
+                                % app.log_results.query_results.len();
+                    }
+                    KeyCode::Char('k') | KeyCode::Up => {
+                        let l = app.log_results.query_results.len();
+                        let r = app.log_results.query_result_selected;
+                        app.log_results.query_result_selected = if r > 0 && l > 0 {
+                            (r - 1) % l
+                        } else if r == 0 && l > 0 {
+                            l - 1
+                        } else {
+                            0
+                        };
+                    }
+                    _ => {}
+                },
                 _ => {}
             },
-            KeyCode::Char('j') | KeyCode::Down => match app.focused {
-                Widget::LogGroups | Widget::TimeSelector => {
-                    app.focused = Widget::Query;
-                }
-                Widget::Query => {
-                    app.focused = Widget::LogRows;
-                }
-                _ => {
-                    app.focused = Widget::LogGroups;
-                }
-            },
-            KeyCode::Char('k') | KeyCode::Up => match app.focused {
-                Widget::LogGroups => {
-                    app.focused = Widget::LogRows;
-                }
-                Widget::Query => {
-                    app.focused = Widget::LogGroups;
-                }
-                Widget::TimeSelector => {
-                    app.focused = Widget::LogRows;
-                }
-                Widget::LogRows => {
-                    app.focused = Widget::Query;
-                }
-                _ => {
-                    app.focused = Widget::LogGroups;
-                }
-            },
-            KeyCode::Char('l') | KeyCode::Right => match app.focused {
-                Widget::LogGroups => {
-                    app.focused = Widget::TimeSelector;
-                }
-                Widget::TimeSelector => {
-                    app.focused = Widget::LogGroups;
-                }
-                _ => {}
-            },
-            KeyCode::Char('r') => {
-                cwl.send(AwsReq::RunQuery).unwrap();
-            }
-            _ => {}
         },
     }
 }
@@ -265,6 +304,15 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         .split(popup_layout[1])[1]
 }
 
+pub(crate) struct LogResults {
+    pub(crate) query_results: Vec<QueryLogRow>,
+    query_result_selected: usize,
+}
+impl Default for LogResults {
+    fn default() -> Self {
+        Self { query_results: vec![], query_result_selected: 0usize }
+    }
+}
 
 pub(crate) struct QueryLogRow {
     pub(crate) message: String,
