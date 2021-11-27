@@ -39,6 +39,10 @@ pub(crate) fn run(app: Arc<Mutex<App>>, rx: Receiver<AwsReq>) {
             if let Ok(req) = rx.recv() {
                 match req {
                     AwsReq::ListLogGroups => {
+                        {
+                            let mut app_ = app.lock().unwrap();
+                            app_.status_message = StatusMessage::info("Log groups request started");
+                        }
                         let res = client.describe_log_groups().send().await;
                         match res {
                             Ok(mut res) => {

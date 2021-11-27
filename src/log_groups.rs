@@ -126,6 +126,9 @@ pub(crate) fn handle_input(
                     app.focused = Widget::LogGroups;
                 }
             },
+            KeyCode::Char('r') => {
+                cwl.send(AwsReq::ListLogGroups).unwrap();
+            },
             _ => {}
         },
         Mode::Insert => match app.focused {
