@@ -39,7 +39,8 @@ impl From<io::Error> for EditorInputError {
     }
 }
 
-/// Opens the editor specified by the $EDITOR environment variable (fallback `vi`).
+/// Opens the editor specified by the $EDITOR environment variable (fallback `vi`)
+/// and returns the saved text when the editor is closed.
 ///
 /// # Arguments
 ///

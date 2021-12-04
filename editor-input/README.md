@@ -9,6 +9,7 @@ Example
 
 ```rust
 fn main() {
-    println!("{}", editor_input::input_from_editor("placeholder text").unwrap());
+    let edited_string = editor_input::input_from_editor("placeholder text").unwrap();
+    println!("{}", edited_string);
 }
 ```
