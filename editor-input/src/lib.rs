@@ -1,12 +1,45 @@
 use std::{
     env::var,
+    error,
     fs::File,
-    io::{Read, Result, Write},
-    process::Command,
+    io::{self, Read, Write},
+    process::{Command, ExitStatus},
 };
 use tempfile::NamedTempFile;
 
-pub fn input_from_editor(placeholder: &str) -> Result<String> {
+#[derive(Debug)]
+pub enum EditorInputError {
+    ExitStatus(ExitStatus),
+    IO(io::Error),
+}
+
+impl std::fmt::Display for EditorInputError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EditorInputError::ExitStatus(ex) => {
+                write!(f, "Editor exited with unsuccessful exit status {}", ex)
+            }
+            EditorInputError::IO(io) => io.fmt(f),
+        }
+    }
+}
+
+impl error::Error for EditorInputError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match *self {
+            EditorInputError::ExitStatus(_) => None,
+            EditorInputError::IO(ref e) => Some(e),
+        }
+    }
+}
+
+impl From<io::Error> for EditorInputError {
+    fn from(e: io::Error) -> Self {
+        Self::IO(e)
+    }
+}
+
+pub fn input_from_editor(placeholder: &str) -> Result<String, EditorInputError> {
     let editor = var("EDITOR").unwrap_or("vi".to_string());
 
     let mut tmpfile = NamedTempFile::new()?;
@@ -14,7 +47,9 @@ pub fn input_from_editor(placeholder: &str) -> Result<String> {
     let file_path = tmpfile.into_temp_path();
 
     let status = Command::new(editor).arg(&file_path).status()?;
-    assert!(status.success(), "editor gave bad exit code");
+    if !status.success() {
+        return Err(EditorInputError::ExitStatus(status));
+    }
 
     let mut editable = String::new();
     File::open(file_path)?.read_to_string(&mut editable)?;
