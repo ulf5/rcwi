@@ -39,6 +39,12 @@ impl From<io::Error> for EditorInputError {
     }
 }
 
+/// Opens the editor specified by the $EDITOR environment variable (fallback `vi`).
+///
+/// # Arguments
+///
+///  * `placeholder` - Text that will be present in the temporary file being edited
+///
 pub fn input_from_editor(placeholder: &str) -> Result<String, EditorInputError> {
     let editor = var("EDITOR").unwrap_or("vi".to_string());
 
