@@ -1,7 +1,7 @@
 editor-input
 ============
 
-[![Crate](https://img.shields.io/crates/v/editor-input.svg)](https://crates.io/crates/editor-input)
+[![Crate](https://img.shields.io/crates/v/editor-input.svg)](https://crates.io/crates/editor-input)  
 A simple library containing a method for accepting input from the editor
 specified by the $EDITOR environment variable (like `git` does).
 
